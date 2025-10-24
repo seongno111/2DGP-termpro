@@ -1,22 +1,35 @@
 from pico2d import *
 
-stage = [1, 1, 1, 1, 1, 2, 2, 1, 1, 1, 1, 1]
+stage = [2, 2, 2, 2, 2, 2, 2, 2
+        ,2, 1, 2, 2, 2, 2, 2, 2
+        ,1, 1, 1, 1, 1, 1, 1, 1
+        ,1, 1, 1, 1, 1, 1, 1, 1
+        ,2, 2, 1, 2, 2, 2, 2, 2
+        ,2, 2, 2, 2, 2, 2, 2, 2]
 
 open_canvas()
 
 class Tile:
     image_first = None
     image_second = None
+    TILE_W = 100
+    TILE_H = 100
     def __init__(self):
         if self.image_first is None and self.image_second is None:
             self.image_first = load_image('ground.png')
             self.image_second = load_image('floor_nd.png')
     def draw(self, stage):
-        for i in range(12):
+        canvas_h = get_canvas_height()
+        for i in range(len(stage)):
+            col = i % 8
+            row = i // 8
+            x = col * Tile.TILE_W + Tile.TILE_W // 2
+            # 위에서부터 그리려면 캔버스 높이에서 오프셋을 뺌
+            y = canvas_h - (row * Tile.TILE_H + Tile.TILE_H // 2)
             if stage[i] == 1:
-                self.image_first.clip_draw(0, 0, 32, 32, i*32+16, 16)
+                self.image_first.clip_draw(0, 0, 100, 100, x, y)
             elif stage[i] == 2:
-                self.image_second.clip_draw(0, 0, 32, 32, i*32+16, 16)
+                self.image_second.clip_draw(0, 0,100, 150, x, y)
 
 tile_map = Tile()
 
