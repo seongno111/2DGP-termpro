@@ -1,13 +1,15 @@
 from pico2d import *
 
-stage = [2, 2, 2, 2, 2, 2, 2, 2
-        ,2, 1, 2, 2, 2, 2, 2, 2
-        ,1, 1, 1, 1, 1, 1, 1, 1
-        ,1, 1, 1, 1, 1, 1, 1, 1
-        ,2, 2, 1, 2, 2, 2, 2, 2
-        ,2, 2, 2, 2, 2, 2, 2, 2]
+stage = [2, 2, 2, 2, 2, 2, 2, 2,2,2
+        ,2, 1, 2, 2, 2, 2, 2, 2,2,2
+        ,1, 1, 1, 1, 1, 1, 1, 1,1,1
+        ,1, 1, 1, 1, 1, 1, 1, 1,1,1
+        ,2, 2, 1, 2, 2, 2, 2, 2,2,2
+        ,2, 2, 2, 2, 2, 2, 2, 2,2,2
+        ,2, 2, 2, 2, 2, 2, 2, 2,2,2
+        ,2, 2, 2, 2, 2, 2, 2, 2,2,2]
 
-open_canvas()
+open_canvas(1000,800)
 
 class Tile:
     image_first = None
@@ -21,8 +23,8 @@ class Tile:
     def draw(self, stage):
         canvas_h = get_canvas_height()
         for i in range(len(stage)):
-            col = i % 8
-            row = i // 8
+            col = i % 10
+            row = i // 10
             x = col * Tile.TILE_W + Tile.TILE_W // 2
             # 위에서부터 그리려면 캔버스 높이에서 오프셋을 뺌
             y = canvas_h - (row * Tile.TILE_H + Tile.TILE_H // 2)
