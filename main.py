@@ -1,8 +1,8 @@
 from pico2d import *
-
+from Knight import *
 from Tile import Tile
 
-stage = [2, 2, 2, 2, 2, 2, 2, 2,2,2
+stage_temp = [2, 2, 2, 2, 2, 2, 2, 2,2,2
         ,2, 2, 2, 2, 2, 2, 2, 2,2,2
         ,1, 1, 2, 2, 2, 2, 2, 2,1,1
         ,2, 1, 1, 1, 1, 1, 1, 1,1,2
@@ -11,7 +11,15 @@ stage = [2, 2, 2, 2, 2, 2, 2, 2,2,2
         ,2, 2, 2, 2, 2, 2, 2, 2,2,2
         ,2, 2, 2, 2, 2, 2, 2, 2,2,2]
 def reset_stage():
-    pass
+    global stage
+    global knight
+    stage = []
+
+    tile = Tile()
+    stage.append(tile)
+
+    knight = Knight()
+    stage.append(knight)
 
 
 def update_stage():
