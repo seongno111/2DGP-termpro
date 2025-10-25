@@ -19,6 +19,7 @@ class Knight:
             self.p_image = load_image('Knight_portrait.png')
     def draw(self):
         self.image.clip_draw(0, 0, 100, 100, self.x, self.y)
+        self.p_image.clip_draw(0, 0, 1022, 1022, self.p_x, self.p_y, 100, 100)
     def set_number(self, number):
         self.number = number
         self.p_x, self.p_y = (number-1)*100+50, 50

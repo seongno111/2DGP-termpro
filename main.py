@@ -23,6 +23,7 @@ def reset_stage():
 
     knight = Knight()
     stage.append(knight)
+    stage[1].set_number(1)
 
 
 def update_stage():
