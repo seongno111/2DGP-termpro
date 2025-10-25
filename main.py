@@ -11,8 +11,9 @@ stage = [2, 2, 2, 2, 2, 2, 2, 2,2,2
         ,2, 2, 2, 2, 2, 2, 2, 2,2,2
         ,2, 2, 2, 2, 2, 2, 2, 2,2,2]
 
-tile_map = Tile()
+
 open_canvas(1000,800)
+tile_map = Tile()
 while True:
     clear_canvas()
     tile_map.draw(stage)
