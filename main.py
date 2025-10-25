@@ -23,19 +23,24 @@ def reset_stage():
 
 
 def update_stage():
+    for o in stage:
+        o.update()
     pass
 
 
 def render_stage():
+    clear_canvas()
+    stage[0].draw(stage_temp)
+    stage[1].draw()
+    update_canvas()
     pass
+
+running = True
 
 open_canvas(1000,800)
 reset_stage()
-tile_map = Tile()
-while True:
-    clear_canvas()
+while running:
     update_stage()
-    tile_map.draw(stage)
     render_stage()
     delay(0.01)
 

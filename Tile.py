@@ -22,3 +22,5 @@ class Tile:
                 self.image_first.clip_draw(0, 0, 100, 100, x, y)
             elif stage[i] == 2:
                 self.image_second.clip_draw(0, 0,100, 150, x, y)
+    def update(self):
+        pass
