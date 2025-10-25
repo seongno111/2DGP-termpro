@@ -10,13 +10,25 @@ stage = [2, 2, 2, 2, 2, 2, 2, 2,2,2
         ,2, 2, 2, 2, 2, 2, 2, 2,2,2
         ,2, 2, 2, 2, 2, 2, 2, 2,2,2
         ,2, 2, 2, 2, 2, 2, 2, 2,2,2]
+def reset_stage():
+    pass
 
+
+def update_stage():
+    pass
+
+
+def render_stage():
+    pass
 
 open_canvas(1000,800)
+reset_stage()
 tile_map = Tile()
 while True:
     clear_canvas()
+    update_stage()
     tile_map.draw(stage)
-    update_canvas()
+    render_stage()
+    delay(0.01)
 
 close_canvas()
