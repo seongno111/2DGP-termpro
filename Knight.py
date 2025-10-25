@@ -1,5 +1,28 @@
 from pico2d import load_image
 
+class Non_appear:
+    def __init__(self, knight):
+        self.knight = knight
+    def enter(self, e):
+        pass
+    def exit(self, e):
+        pass
+    def do(self):
+        pass
+    def draw(self):
+        pass
+
+class Idle:
+    def __init__(self, knight):
+        self.knight = knight
+    def enter(self, e):
+        pass
+    def exit(self, e):
+        pass
+    def do(self):
+        pass
+    def draw(self):
+        pass
 
 class Knight:
     image = None
@@ -17,6 +40,10 @@ class Knight:
             self.image = load_image('knight_01.png')
         if self.p_image is None:
             self.p_image = load_image('Knight_portrait.png')
+
+        self.NON_APPEAR = Non_appear(self)
+        self.IDLE = Idle(self)
+
     def draw(self):
         self.image.clip_draw(0, 0, 100, 100, self.x, self.y)
         self.p_image.clip_draw(0, 0, 1022, 1022, self.p_x, self.p_y, 100, 100)
