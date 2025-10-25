@@ -1,7 +1,10 @@
 from pico2d import load_image
-from sdl2 import SDL_KEYDOWN, SDLK_SPACE, SDLK_RIGHT, SDL_KEYUP, SDLK_LEFT
+from sdl2 import SDL_KEYDOWN, SDLK_SPACE, SDLK_RIGHT, SDL_KEYUP, SDLK_LEFT, SDL_MOUSEBUTTONDOWN, SDL_BUTTON_LEFT
 
 from state_machine import StateMachine
+
+def m_right_down(e):
+    return e[0] == 'INPUT' and e[1].type == SDL_MOUSEBUTTONDOWN and e[1].key == SDL_BUTTON_LEFT
 
 class Non_appear:
     def __init__(self, knight):
@@ -13,6 +16,7 @@ class Non_appear:
     def do(self):
         pass
     def draw(self):
+        self.knight.p_image.clip_draw(0, 0, 1022, 1022, self.knight.p_x, self.knight.p_y, 100, 100)
         pass
 
 class Idle:
@@ -25,7 +29,24 @@ class Idle:
     def do(self):
         pass
     def draw(self):
+        self.knight.p_image.clip_draw(0, 0, 1022, 1022, self.knight.p_x, self.knight.p_y, 100, 100)
         pass
+
+
+class Ready_to_appear:
+    def __init__(self, knight):
+        self.knight = knight
+    def enter(self, e):
+        pass
+    def exit(self, e):
+        pass
+    def do(self):
+        pass
+    def draw(self):
+        self.knight.p_image.clip_draw(0, 0, 1022, 1022, self.knight.p_x, self.knight.p_y, 100, 100)
+        pass
+
+
 
 class Knight:
     image = None
@@ -45,20 +66,24 @@ class Knight:
             self.p_image = load_image('Knight_portrait.png')
 
         self.NON_APPEAR = Non_appear(self)
+        self.READY_TO_APPEAR = Ready_to_appear(self)
         self.IDLE = Idle(self)
         self.state_machine = StateMachine(
             self.NON_APPEAR,
             {
-
-
-            }
+                self.NON_APPEAR : {m_right_down: self.READY_TO_APPEAR},
+                self.READY_TO_APPEAR : {},
+                self.IDLE : {}
+             }
         )
 
     def draw(self):
-        self.image.clip_draw(0, 0, 100, 100, self.x, self.y)
-        self.p_image.clip_draw(0, 0, 1022, 1022, self.p_x, self.p_y, 100, 100)
+        self.state_machine.draw()
+        #self.image.clip_draw(0, 0, 100, 100, self.x, self.y)
     def set_number(self, number):
         self.number = number
         self.p_x, self.p_y = (number-1)*100+50, 50
     def update(self):
-        pass
+        self.state_machine.update()
+    def handle_event(self, event):
+        self.state_machine.handle_state_event(('INPUT',event))
