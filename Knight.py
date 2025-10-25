@@ -1,5 +1,5 @@
 from pico2d import load_image, get_canvas_width, get_canvas_height
-from sdl2 import SDL_KEYDOWN, SDLK_SPACE, SDLK_RIGHT, SDL_KEYUP, SDLK_LEFT, SDL_MOUSEBUTTONDOWN, SDL_BUTTON_LEFT, SDL_MOUSEBUTTONUP
+from sdl2 import SDL_MOUSEBUTTONDOWN, SDL_BUTTON_LEFT, SDL_MOUSEBUTTONUP
 
 from state_machine import StateMachine
 
@@ -17,7 +17,7 @@ class Non_appear:
     def exit(self, e):
         pass
     def do(self):
-        pass
+       pass
     def draw(self):
         self.knight.p_image.clip_draw(0, 0, 1022, 1022, self.knight.p_x, self.knight.p_y, 100, 100)
 
@@ -50,6 +50,7 @@ class Ready_to_appear:
     def enter(self, e):
         pass
     def exit(self, e):
+        # placement happens on mouse-up: Ready->Idle transition triggers this exit
         if e and e[0] == 'INPUT':
             sdl_e = e[1]
 
@@ -80,19 +81,10 @@ class Ready_to_appear:
                 self.knight.y = gy
         pass
     def do(self):
-        mx = getattr(self.knight, 'last_mouse_x', None)
-        if mx is None:
-            return
-
-        compare_x = getattr(self.knight, 'x', None)
-        if compare_x is None or compare_x == 0:
-            compare_x = get_canvas_width() // 2
-
-        self.knight.face_dir = 0 if mx >= compare_x else 1
-        pass
+        # face direction is updated during mouse-drag handling in Knight.handle_event
+        return
     def draw(self):
         self.knight.p_image.clip_draw(0, 0, 1022, 1022, self.knight.p_x, self.knight.p_y, 100, 100)
-        pass
 
 
 
@@ -110,18 +102,45 @@ class Knight:
         self.number = 1
         self.last_mouse_x = None
         self.last_mouse_y = None
+        # 이동 중 마우스 x 저장(드래그로 face_dir 결정)
+        self.last_motion_x = None
         if self.image is None:
             self.image = load_image('knight_01.png')
         if self.p_image is None:
             self.p_image = load_image('Knight_portrait.png')
-
         self.NON_APPEAR = Non_appear(self)
         self.READY_TO_APPEAR = Ready_to_appear(self)
         self.IDLE = Idle(self)
+
+        def m_left_up_on_portrait(e, _self=self):
+            if e[0] != 'INPUT':
+                return False
+            sdl_e = e[1]
+            if getattr(sdl_e, 'type', None) != SDL_MOUSEBUTTONUP or getattr(sdl_e, 'button', None) != SDL_BUTTON_LEFT:
+                return False
+            if not (hasattr(sdl_e, 'x') and hasattr(sdl_e, 'y')):
+                return False
+
+            mx = int(sdl_e.x)
+            my = int(sdl_e.y)
+            canvas_h = get_canvas_height()
+
+            # SDL Y -> pico2d Y 변환
+            py = canvas_h - my
+
+            # portrait 크기(코드에서 draw에 사용한 100x100)
+            pw, ph = 100, 100
+            left = _self.p_x - pw // 2
+            right = _self.p_x + pw // 2
+            bottom = _self.p_y - ph // 2
+            top = _self.p_y + ph // 2
+
+            return left <= mx <= right and bottom <= py <= top
+
         self.state_machine = StateMachine(
             self.NON_APPEAR,
             {
-                self.NON_APPEAR : {m_left_up : self.READY_TO_APPEAR},
+                self.NON_APPEAR : {m_left_up_on_portrait : self.READY_TO_APPEAR},
                 self.READY_TO_APPEAR : {m_left_up : self.IDLE},
                 self.IDLE : {}
              }
@@ -135,14 +154,4 @@ class Knight:
     def update(self):
         self.state_machine.update()
     def handle_event(self, event):
-        # 마우스 무브를 캐치해 화면 좌표로 변환하여 저장
-        if getattr(event, 'type', None) == getattr(__import__('sdl2'), 'SDL_MOUSEMOTION', None):
-            mx = getattr(event, 'x', 0)
-            my = getattr(event, 'y', 0)
-            try:
-                self.last_mouse_x = int(mx)
-                self.last_mouse_y = get_canvas_height() - int(my)
-            except Exception:
-                self.last_mouse_x = int(mx)
-                self.last_mouse_y = int(my)
         self.state_machine.handle_state_event(('INPUT',event))
