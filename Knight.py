@@ -1,4 +1,7 @@
 from pico2d import load_image
+from sdl2 import SDL_KEYDOWN, SDLK_SPACE, SDLK_RIGHT, SDL_KEYUP, SDLK_LEFT
+
+from state_machine import StateMachine
 
 class Non_appear:
     def __init__(self, knight):
@@ -43,6 +46,13 @@ class Knight:
 
         self.NON_APPEAR = Non_appear(self)
         self.IDLE = Idle(self)
+        self.state_machine = StateMachine(
+            self.NON_APPEAR,
+            {
+
+
+            }
+        )
 
     def draw(self):
         self.image.clip_draw(0, 0, 100, 100, self.x, self.y)
