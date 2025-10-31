@@ -4,13 +4,17 @@ from pico2d import load_image, get_canvas_height
 class Tile:
     image_first = None
     image_second = None
+    image_third = None
     TILE_W = 100
     TILE_H = 100
     def __init__(self, num = 0, dep = 0):
+        self.number, self.depth = num, dep
         if self.image_first is None and self.image_second is None:
             self.image_first = load_image('ground.png')
             self.image_second = load_image('floor_nd.png')
-        self.number, self.depth = num, dep
+        if self.image_third is None and self.depth == 2:
+            self.image_first = load_image('de_place.png')
+        self.frame = 0
     def draw(self):
         canvas_h = get_canvas_height()
         col = self.number % 10
@@ -22,5 +26,10 @@ class Tile:
             self.image_first.clip_draw(0, 0, 100, 100, x, y)
         elif self.depth == 1:
             self.image_second.clip_draw(0, 0,100, 150, x, y)
+        if self.depth == 2:
+            self.image_first.clip_draw(48 * self.frame, 0, 48, 45, x, y, 100, 100)
     def update(self):
+        if self.depth == 2:
+            self.frame += 1
+            self.frame = self.frame % 3
         pass

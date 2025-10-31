@@ -8,7 +8,7 @@ import game_framework
 stage_temp = [2, 2, 2, 2, 2, 2, 2, 2,2,2
              ,2, 2, 2, 2, 2, 2, 2, 2,2,2
              ,2, 2, 2, 2, 2, 2, 2, 2,2,2
-             ,1, 1, 1, 1, 1, 1, 1, 1,1,1
+             ,3, 1, 1, 1, 1, 1, 1, 1,1,1
              ,2, 2, 2, 2, 2, 2, 2, 2,2,2
              ,2, 2, 2, 2, 2, 2, 2, 2,2,2
              ,2, 2, 2, 2, 2, 2, 2, 2,2,2
@@ -28,8 +28,12 @@ def handle_events():
 def init():
     tile = []
     for i in range(len(stage_temp)):
-        tile.append(Tile(i, stage_temp[i]-1))
-        game_world.add_object(tile[i], stage_temp[i]-1)
+        if stage_temp[i] == 3:
+            tile.append(Tile(i, 2))
+            game_world.add_object(tile[i], 1)
+        else:
+            tile.append(Tile(i, stage_temp[i]-1))
+            game_world.add_object(tile[i], stage_temp[i]-1)
 
 
 
