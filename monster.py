@@ -11,6 +11,7 @@ class Idle:
     def exit(self, e):
         pass
     def do(self):
+        self.monster.x += 1
         pass
     def draw(self):
         x = self.monster.x
@@ -38,7 +39,7 @@ class Monster:
         self.Def = 5
         self.Atk = 50
         self.frame = 0
-        self.face_dir = 1  # 1: right, -1: left
+        self.face_dir = 0  # 1: right, -1: left
         if self.image is None:
             self.image = load_image('asha01_01.png') #임시 이미지
         self.IDLE = Idle(self)
