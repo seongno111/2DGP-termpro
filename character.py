@@ -123,7 +123,7 @@ class Character:
             ROWS = len(play_mode.stage_temp) // COLS
 
             col = int(mx // TILE_W)
-            row = int(my // TILE_H)
+            row = int((get_canvas_height()-my) // TILE_H)
             idx = row * COLS + col
 
             print(f"Attempt place: mx={mx}, my={my}, col={col}, row={row}, idx={idx}")
@@ -141,18 +141,18 @@ class Character:
             print(f"tile_depth={tile_depth}, candidate_depth={candidate_depth}, stage_val={play_mode.stage_temp[idx]}")
 
             # 수정: 같은 깊이뿐 아니라 타일 깊이가 후보 깊이보다 크거나 같으면 배치 허용
-            if tile_depth < candidate_depth:
+            if tile_depth != candidate_depth:
                 print("Depth too shallow -> cannot place here")
                 return False
 
             knight = Knight()
             # 타일 중앙에 배치
             knight.x = col * TILE_W + TILE_W // 2
-            knight.y = row * TILE_H + TILE_H // 2
+            knight.y = (get_canvas_height()-((row+1) * TILE_H)) + TILE_H // 2
             knight.tile_center_x = knight.x
             knight.tile_center_y = knight.y
             # 레이어는 knight.depth로 등록
-            game_world.add_object(knight, my//100)
+            game_world.add_object(knight, (get_canvas_height()-my)//100)
             self._placed_knight = knight
             self.placing = False  # 배치 완료하면 플래그 끔
             print(f"Knight placed at idx={idx}, x={knight.x}, y={knight.y}")

@@ -49,8 +49,10 @@ def init():
         else:
             tile.append(Tile(i, stage_temp[i]-1))
             game_world.add_object(tile[i], i//10)
+
     character = Character()
     game_world.add_object(character, 7)
+
     _spawn_positions = [i for i, v in enumerate(stage_temp) if v == 3]
     _spawn_index = 0
     _last_spawn_time = time.time()
