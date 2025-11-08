@@ -4,6 +4,11 @@ import game_framework
 from Tile import Tile
 from state_machine import StateMachine
 
+PIXEL_PER_METER = (10.0 / 0.3)  # 10 pixel 30 cm
+RUN_SPEED_KMPH = 20.0  # Km / Hour
+RUN_SPEED_MPM = (RUN_SPEED_KMPH * 1000.0 / 60.0)
+RUN_SPEED_MPS = (RUN_SPEED_MPM / 60.0)
+RUN_SPEED_PPS = (RUN_SPEED_MPS * PIXEL_PER_METER)
 
 TIME_PER_ACTION = 0.8
 ACTION_PER_TIME = 1.0 / TIME_PER_ACTION
@@ -17,7 +22,7 @@ class Idle:
     def exit(self, e):
         pass
     def do(self):
-        self.monster.x += 1
+        self.monster.x += RUN_SPEED_PPS * game_framework.frame_time
         self.monster.frame = (self.monster.frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time) % 2
         pass
     def draw(self):
