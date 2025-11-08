@@ -12,6 +12,7 @@ class Idle:
         pass
     def do(self):
         self.monster.x += 1
+        self.monster.frame = (self.monster.frame + 1) % 2
         pass
     def draw(self):
         x = self.monster.x
@@ -19,12 +20,14 @@ class Idle:
         face = getattr(self.monster, 'face_dir', 0)
         # face == 0: 오른쪽(정방향), 그 외: 좌우 반전
         if face == 0:
-            self.monster.image.clip_draw(0, 0, 100, 100, x, y, 150, 150)
+            self.monster.image[self.monster.frame].clip_draw(0, 0, 100, 100, x, y, 150, 150)
         else:
-            self.monster.image.clip_composite_draw(0, 0, 100, 100, 0, 'h', x, y, 150, 150)
+            self.monster.image[self.monster.frame].clip_composite_draw(0, 0, 100, 100, 0, 'h', x, y, 150, 150)
 
 class Monster:
-    image = None
+    image = []
+    image.append(None)
+    image.append(None)
     def __init__(self, num):
         self.num = num
         col = num % 10
@@ -40,8 +43,9 @@ class Monster:
         self.Atk = 50
         self.frame = 0
         self.face_dir = 0  # 1: right, -1: left
-        if self.image is None:
-            self.image = load_image('asha01_01.png') #임시 이미지
+        if self.image[0] is None:
+            self.image[0] = load_image('brownbear_01.png')
+            self.image[1] = load_image('brownbear_02.png')
         self.IDLE = Idle(self)
         self.state_machine = StateMachine(
             self.IDLE,
