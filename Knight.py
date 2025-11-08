@@ -21,16 +21,13 @@ class Idle:
         else:
             # 'h' 플래그로 수평 반전
             self.knight.image.clip_composite_draw(0, 0, 100, 100, 0, 'h', x, y, 150, 150)
-        self.knight.p_image.clip_draw(0, 0, 1022, 1022, self.knight.p_x, self.knight.p_y, 100, 100)
 
 
 class Knight:
     image = None
-    p_image = None
     def __init__(self):
         self.depth = 0
         self.x, self.y = 0, 0
-        self.p_x, self.p_y = 0, 0
         self.frame = 0
         self.face_dir = 0
         self.Hp = 1000
@@ -43,8 +40,6 @@ class Knight:
         self.tile_center_y = 0
         if self.image is None:
             self.image = load_image('knight_01.png')
-        if self.p_image is None:
-            self.p_image = load_image('Knight_portrait.png')
         self.IDLE = Idle(self)
 
         self.state_machine = StateMachine(
