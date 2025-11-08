@@ -76,15 +76,20 @@ class Idle:
 
 class Character:
     k_p_image = None
+    a_p_image = None
     ch_num = 0
     placing = False
 
     def __init__(self):
         self.p_y = 50
         self.k_p_x = 50
+        self.a_p_x = 150
         if self.k_p_image is None:
             self.k_p_image = load_image('Knight_portrait.png')
+        if self.a_p_image is None:
+            self.a_p_image = load_image('Archer_portrait.png')
 
+         # 배치된 기사 객체 추적용
         self._placed_knight = None
 
         def _left_up_if_placing(e):
@@ -211,6 +216,7 @@ class Character:
 
     def draw(self):
         self.k_p_image.clip_draw(0, 0, 1022, 1022, self.k_p_x, self.p_y, 100, 100)
+        self.a_p_image.clip_draw(0,0,1022,1022,self.a_p_x,self.p_y, 100, 100)
 
     def handle_event(self, event):
         self.state_machine.handle_state_event(('INPUT', event))
