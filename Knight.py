@@ -28,6 +28,7 @@ class Knight:
     image = None
     p_image = None
     def __init__(self):
+        self.depth = 0
         self.x, self.y = 0, 0
         self.p_x, self.p_y = 0, 0
         self.frame = 0

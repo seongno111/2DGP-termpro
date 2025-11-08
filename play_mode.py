@@ -60,6 +60,8 @@ def spwan_monster():
             _spawn_index = (_spawn_index + 1) % len(_spawn_positions)
             _last_spawn_time = now
 
+
+
 def update():
     global _last_spawn_time, _spawn_index
     now = time.time()
