@@ -1,7 +1,13 @@
 from pico2d import load_image, get_canvas_height
+
+import game_framework
 from Tile import Tile
 from state_machine import StateMachine
 
+
+TIME_PER_ACTION = 0.8
+ACTION_PER_TIME = 1.0 / TIME_PER_ACTION
+FRAMES_PER_ACTION = 8
 
 class Idle:
     def __init__(self, monster):
@@ -12,7 +18,7 @@ class Idle:
         pass
     def do(self):
         self.monster.x += 1
-        self.monster.frame = (self.monster.frame + 1) % 2
+        self.monster.frame = (self.monster.frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time) % 2
         pass
     def draw(self):
         x = self.monster.x
@@ -20,9 +26,9 @@ class Idle:
         face = getattr(self.monster, 'face_dir', 0)
         # face == 0: 오른쪽(정방향), 그 외: 좌우 반전
         if face == 0:
-            self.monster.image[self.monster.frame].clip_draw(0, 0, 100, 100, x, y, 150, 150)
+            self.monster.image[int(self.monster.frame)].clip_draw(0, 0, 100, 100, x, y, 150, 150)
         else:
-            self.monster.image[self.monster.frame].clip_composite_draw(0, 0, 100, 100, 0, 'h', x, y, 150, 150)
+            self.monster.image[int(self.monster.frame)].clip_composite_draw(0, 0, 100, 100, 0, 'h', x, y, 150, 150)
 
 class Monster:
     image = []
