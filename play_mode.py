@@ -48,9 +48,7 @@ def init():
     _spawn_index = 0
     _last_spawn_time = time.time()
 
-
-
-def update():
+def spwan_monster():
     global _last_spawn_time, _spawn_index
     now = time.time()
     if _spawn_positions:
@@ -61,6 +59,11 @@ def update():
             game_world.add_object(monster, 2)
             _spawn_index = (_spawn_index + 1) % len(_spawn_positions)
             _last_spawn_time = now
+
+def update():
+    global _last_spawn_time, _spawn_index
+    now = time.time()
+    spwan_monster()
 
     game_world.update()
 
