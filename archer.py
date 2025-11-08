@@ -17,10 +17,10 @@ class Idle:
         y = self.archer.y + 50
         # face_dir == 0 -> 오른쪽, 1 -> 왼쪽(수평 반전)
         if getattr(self.archer, 'face_dir', 0) == 0:
-            self.archer.image.clip_draw(0, 0, 100, 100, x, y, 150, 160)
+            self.archer.image.clip_draw(0, 0, 100, 100, x, y+50, 150, 160)
         else:
             # 'h' 플래그로 수평 반전
-            self.archer.image.clip_composite_draw(0, 0, 100, 100, 0, 'h', x, y, 150, 160)
+            self.archer.image.clip_composite_draw(0, 0, 100, 100, 0, 'h', x, y+50, 150, 160)
 
 
 class Archer:
