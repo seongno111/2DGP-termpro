@@ -77,6 +77,10 @@ class Idle:
 class Character:
     k_p_image = None
     a_p_image = None
+    h_p_image = None
+    d_p_image = None
+    s_p_image = None
+    v_p_image = None
     ch_num = 0
     placing = False
 
@@ -84,11 +88,22 @@ class Character:
         self.p_y = 50
         self.k_p_x = 50
         self.a_p_x = 150
+        self.h_p_x = 250
+        self.d_p_x = 350
+        self.s_p_x = 450
+        self.v_p_x = 550
         if self.k_p_image is None:
             self.k_p_image = load_image('Knight_portrait.png')
         if self.a_p_image is None:
             self.a_p_image = load_image('Archer_portrait.png')
-
+        if self.h_p_image is None:
+            self.h_p_image = load_image('Hptank_portrait.png')
+        if self.d_p_image is None:
+            self.d_p_image = load_image('Dptank_portrait.png')
+        if self.s_p_image is None:
+            self.s_p_image = load_image('Healer_portrait.png')
+        if self.v_p_image is None:
+            self.v_p_image = load_image('Vanguard_portrait.png')
          # 배치된 기사 객체 추적용
         self._placed_knight = None
 
@@ -216,7 +231,11 @@ class Character:
 
     def draw(self):
         self.k_p_image.clip_draw(0, 0, 1022, 1022, self.k_p_x, self.p_y, 100, 100)
-        self.a_p_image.clip_draw(0,0,1022,1022,self.a_p_x,self.p_y, 100, 100)
+        self.a_p_image.clip_draw(0, 0, 1022, 1022, self.a_p_x, self.p_y, 100, 100)
+        self.h_p_image.clip_draw(0, 0, 1022, 1022, self.h_p_x, self.p_y, 100, 100)
+        self.d_p_image.clip_draw(0, 0, 1022, 1022, self.d_p_x, self.p_y, 100, 100)
+        self.s_p_image.clip_draw(0, 0, 1022, 1022, self.s_p_x, self.p_y, 100, 100)
+        self.v_p_image.clip_draw(0, 0, 1022, 1022, self.v_p_x, self.p_y, 100, 100)
 
     def handle_event(self, event):
         self.state_machine.handle_state_event(('INPUT', event))
