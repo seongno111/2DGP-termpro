@@ -7,7 +7,7 @@ from state_machine import StateMachine
 
 TIME_PER_ACTION = 0.8
 ACTION_PER_TIME = 1.0 / TIME_PER_ACTION
-FRAMES_PER_ACTION = 8
+FRAMES_PER_ACTION = 2
 
 class Idle:
     def __init__(self, monster):
