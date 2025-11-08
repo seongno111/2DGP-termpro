@@ -4,6 +4,7 @@ import game_world
 from Knight import *
 from Tile import Tile
 import game_framework
+from character import Character
 from monster import Monster
 
 stage_temp = [2, 2, 2, 2, 2, 2, 2, 2,2,2
@@ -34,6 +35,8 @@ def handle_events():
 def init():
     global _spawn_positions, _spawn_index, _last_spawn_time
     tile = []
+    character = Character()
+    game_world.add_object(character, 2)
     for i in range(len(stage_temp)):
         if stage_temp[i] == 3:
             tile.append(Tile(i, 2))
