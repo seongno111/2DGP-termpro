@@ -5,19 +5,9 @@ from state_machine import StateMachine
 def left_m_down(e):
     return e[0] == 'INPUT' and e[1].type == SDL_MOUSEBUTTONDOWN and e[1].button == SDL_BUTTON_LEFT
 
-def mouse_pos_poll():
-    """폴링으로 현재 마우스 위치 얻기"""
-    x = c_int()
-    y = c_int()
-    SDL_GetMouseState(x, y)
-    mx, my = x.value, y.value
-    # 필요하면 Y 반전
-    try:
-        canvas_h = get_canvas_height()
-        my = canvas_h - my
-    except Exception:
-        pass
-    return mx, my
+def left_m_up(e):
+
+    return e[0] == 'INPUT' and e[1].type == SDL_MOUSEBUTTONUP and e[1].button == SDL_BUTTON_LEFT
 
 class Decide:
     def __init__(self, character):
@@ -50,7 +40,8 @@ class Idle:
     def enter(self, e):
         pass
     def exit(self, e):
-        print(mouse_pos_poll())
+        if left_m_down(e):
+            self.character.check()
     def do(self):
         pass
     def draw(self):
@@ -68,6 +59,13 @@ class Character:
         if self.k_p_image is None:
             self.k_p_image = load_image('Knight_portrait.png')
 
+        def _left_up_if_placing(e):
+            if left_m_up(e) and self.placing:
+                # 한 번 전이시키고 플래그 리셋
+                self.placing = False
+                return True
+            return False
+
         self.IDLE = Idle(self)
         self.PLACING = Place(self)
         self.DECIDE = Decide(self)
@@ -75,12 +73,27 @@ class Character:
             self.IDLE,
             {
                 self.IDLE: {
-                    left_m_down: self.IDLE
+                    left_m_down: self.IDLE,
+                    _left_up_if_placing: self.PLACING
                 },
                 self.PLACING: {},
                 self.DECIDE: {},
             }
         )
+
+
+
+    def check(self):
+        x = c_int()
+        y = c_int()
+        SDL_GetMouseState(x, y)
+
+        mx, my = x.value, get_canvas_height() - y.value
+        if  self.k_p_x - 50 <= mx <= self.k_p_x + 50 and self.p_y - 50 <= my <= self.p_y + 50:
+            print('Character clicked!')
+            self.ch_num += 1
+            print(f'Character number is now: {self.ch_num}')
+            self.placing = True
 
     def update(self):
         pass
