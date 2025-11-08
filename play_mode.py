@@ -1,11 +1,15 @@
 import time
 from pico2d import *
+
+import character
 import game_world
 from Knight import *
 from Tile import Tile
 import game_framework
 from character import Character
 from monster import Monster
+
+character = None
 
 stage_temp = [2, 2, 2, 2, 2, 2, 2, 2,2,2
              ,2, 2, 2, 2, 2, 2, 2, 2,2,2
@@ -30,10 +34,12 @@ def handle_events():
             running = False
         elif event.type == SDL_KEYDOWN and event.key == SDLK_ESCAPE:
             running = False
+        else:
+            character.handle_event(event)
 
 
 def init():
-    global _spawn_positions, _spawn_index, _last_spawn_time
+    global _spawn_positions, _spawn_index, _last_spawn_time, character
     tile = []
     character = Character()
     game_world.add_object(character, 2)
