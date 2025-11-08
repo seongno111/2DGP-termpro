@@ -65,7 +65,7 @@ def spwan_monster():
             pos_index = _spawn_positions[_spawn_index]
             monster = Monster(pos_index)
             # 몬스터는 캐릭터 레이어(예: 2)에 추가
-            game_world.add_object(monster, monster.y//100+1)
+            game_world.add_object(monster, (get_canvas_height() - monster.y)//100)
             _spawn_index = (_spawn_index + 1) % len(_spawn_positions)
             _last_spawn_time = now
 
