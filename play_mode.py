@@ -41,15 +41,16 @@ def handle_events():
 def init():
     global _spawn_positions, _spawn_index, _last_spawn_time, character
     tile = []
-    character = Character()
-    game_world.add_object(character, 2)
+
     for i in range(len(stage_temp)):
         if stage_temp[i] == 3:
             tile.append(Tile(i, 2))
-            game_world.add_object(tile[i], 1)
+            game_world.add_object(tile[i],  i//10)
         else:
             tile.append(Tile(i, stage_temp[i]-1))
-            game_world.add_object(tile[i], stage_temp[i]-1)
+            game_world.add_object(tile[i], i//10)
+    character = Character()
+    game_world.add_object(character, 7)
     _spawn_positions = [i for i, v in enumerate(stage_temp) if v == 3]
     _spawn_index = 0
     _last_spawn_time = time.time()
@@ -62,7 +63,7 @@ def spwan_monster():
             pos_index = _spawn_positions[_spawn_index]
             monster = Monster(pos_index)
             # 몬스터는 캐릭터 레이어(예: 2)에 추가
-            game_world.add_object(monster, 2)
+            game_world.add_object(monster, monster.y//100+1)
             _spawn_index = (_spawn_index + 1) % len(_spawn_positions)
             _last_spawn_time = now
 
