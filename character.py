@@ -8,7 +8,7 @@ import game_world
 import play_mode
 from state_machine import StateMachine
 
-from Knight import Knight
+from Knight import Knight, BorderOverlay
 from Archer import Archer
 from Hptank import Hptank
 from Dptank import Dptank
@@ -193,6 +193,11 @@ class Character:
             unit.tile_center_y = unit.y
 
             game_world.add_object(unit, (get_canvas_height() - my) // 100)
+
+            overlay = BorderOverlay(unit)
+            unit._overlay = overlay  # 필요하면 참조 저장
+            game_world.add_object(overlay, 7)
+
             # 배치 완료 처리: 플래그 설정
             placed_key = self.placing_unit
             self.unit_placed[placed_key] = True

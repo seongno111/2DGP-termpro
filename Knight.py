@@ -23,6 +23,20 @@ class Idle:
             self.knight.image.clip_composite_draw(0, 0, 100, 100, 0, 'h', x, y, 150, 160)
 
 
+
+class BorderOverlay:
+    """
+    유닛의 get_at_bound() 를 이용해 경계 사각형만 그리는 오버레이.
+    이 객체를 항상 최상위 레이어에 추가하면 타일보다 위에 그려짐.
+    """
+    def __init__(self, unit):
+        self.unit = unit
+    def draw(self):
+        if hasattr(self.unit, 'get_at_bound'):
+            draw_rectangle(*self.unit.get_at_bound())
+    def update(self):
+        pass
+
 class Knight:
     image = None
     def __init__(self):
@@ -59,7 +73,6 @@ class Knight:
             return self.x -50, self.y +50, self.x +50, self.y - 150
     def draw(self):
         self.state_machine.draw()
-        draw_rectangle(*self.get_at_bound())
 
     def update(self):
         self.state_machine.update()
