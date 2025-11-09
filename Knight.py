@@ -16,7 +16,7 @@ class Idle:
         x = self.knight.x
         y = self.knight.y + 50
         # face_dir == 0 -> 오른쪽, 1 -> 왼쪽(수평 반전)
-        if getattr(self.knight, 'face_dir', 0) == 0:
+        if getattr(self.knight, 'face_dir', 0) == 0 or getattr(self.knight, 'face_dir', 0) == 2:
             self.knight.image.clip_draw(0, 0, 100, 100, x, y, 150, 160)
         else:
             # 'h' 플래그로 수평 반전
@@ -29,7 +29,7 @@ class Knight:
         self.depth = 0
         self.x, self.y = 0, 0
         self.frame = 0
-        self.face_dir = 0
+        self.face_dir = 0 # 0오른쪽, 1왼쪽, 2위, 3아래
         self.Hp = 1000
         self.Def = 10
         self.Atk = 100
@@ -51,9 +51,12 @@ class Knight:
     def get_at_bound(self):
         if self.face_dir == 0:
             return self.x-50, self.y - 50, self.x + 150, self.y + 50
-        else:
+        elif self.face_dir == 1:
             return self.x+50, self.y - 50, self.x - 150, self.y + 50
-
+        elif self.face_dir == 2:
+            return self.x -50, self.y -50, self.x +50, self.y + 150
+        else:
+            return self.x -50, self.y +50, self.x +50, self.y - 150
     def draw(self):
         self.state_machine.draw()
         draw_rectangle(*self.get_at_bound())

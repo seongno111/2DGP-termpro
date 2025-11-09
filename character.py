@@ -123,6 +123,7 @@ class Character:
 
         self.placing_unit = None
         self._placed_unit = None
+        self.unit_placed = {key: False for key in self.unit_map.keys()}
 
         # ----- state handlers (일반화) -----
         def _left_up_if_placing(e):
@@ -136,10 +137,12 @@ class Character:
                 return False
             ev = ev_tuple[1]
             mx, my = _get_mouse_pos(ev)
-            # 모든 초상화 검사
             for key, info in self.unit_map.items():
                 x = info['x']
                 if x - 50 <= mx <= x + 50 and self.p_y - 50 <= my <= self.p_y + 50:
+                    if self.unit_placed.get(key, False):
+                        print(f"Portrait clicked: {key} already placed -> cannot start placing")
+                        return False
                     print(f"Portrait clicked: setting placing_unit={key}")
                     self.placing_unit = key
                     return True
@@ -190,9 +193,12 @@ class Character:
             unit.tile_center_y = unit.y
 
             game_world.add_object(unit, (get_canvas_height() - my) // 100)
+            # 배치 완료 처리: 플래그 설정
+            placed_key = self.placing_unit
+            self.unit_placed[placed_key] = True
             self._placed_unit = unit
             self.placing_unit = None
-            print(f"{self.placing_unit} placed at idx={idx}, x={unit.x}, y={unit.y}")
+            print(f"{placed_key} placed at idx={idx}, x={unit.x}, y={unit.y}")
             return True
 
         def _motion_update_direction(ev_tuple):
@@ -200,10 +206,19 @@ class Character:
                     ev_tuple[1], 'type', None) == SDL_MOUSEMOTION):
                 return False
             ev = ev_tuple[1]
-            mx, _ = _get_mouse_pos(ev)
+            mx, my = _get_mouse_pos(ev)
             if self._placed_unit is None:
                 return False
-            self._placed_unit.face_dir = 0 if mx >= self._placed_unit.x else 1
+            dx = mx - self._placed_unit.x
+            dy = my - self._placed_unit.y
+            threshold = 5  # 작은 떨림 무시
+
+            if abs(dy) > abs(dx) and abs(dy) > threshold:
+                # 수직 이동이 더 크면 위(2) 또는 아래(3)
+                self._placed_unit.face_dir = 2 if dy > 0 else 3
+            else:
+                # 수평 기준: 오른쪽(0) 또는 왼쪽(1)
+                self._placed_unit.face_dir = 0 if dx >= 0 else 1
             return True
 
         def _left_up_finalize(ev_tuple):
