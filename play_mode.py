@@ -14,7 +14,7 @@ character = None
 stage_temp = [2, 2, 2, 2, 2, 2, 2, 2,2,2
              ,2, 2, 2, 2, 2, 2, 2, 2,2,2
              ,2, 2, 2, 2, 2, 2, 2, 2,2,2
-             ,3, 1, 1, 1, 1, 1, 1, 1,1,1
+             ,3, 1, 1, 1, 1, 1, 1, 1,1,4
              ,2, 1, 1, 1, 1, 1, 1, 1,2,2
              ,2, 2, 2, 2, 2, 2, 2, 2,2,2
              ,2, 2, 2, 2, 2, 2, 2, 2,2,2
@@ -46,6 +46,9 @@ def init():
         if stage_temp[i] == 3:
             tile.append(Tile(i, 2))
             game_world.add_object(tile[i],  i//10)
+        elif stage_temp[i] == 4:
+            tile.append(Tile(i, 3))
+            game_world.add_object(tile[i], i//10)
         else:
             tile.append(Tile(i, stage_temp[i]-1))
             game_world.add_object(tile[i], i//10)
