@@ -1,4 +1,4 @@
-from pico2d import load_image
+from pico2d import load_image, draw_rectangle
 
 from state_machine import StateMachine
 
@@ -48,9 +48,16 @@ class Knight:
                 self.IDLE : {}
              }
         )
+    def get_at_bound(self):
+        if self.face_dir == 0:
+            return self.x-50, self.y - 50, self.x + 150, self.y + 50
+        else:
+            return self.x+50, self.y - 50, self.x - 150, self.y + 50
 
     def draw(self):
         self.state_machine.draw()
+        draw_rectangle(*self.get_at_bound())
+
     def update(self):
         self.state_machine.update()
     def handle_event(self, event):
