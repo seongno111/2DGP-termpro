@@ -270,5 +270,14 @@ class Character:
         self.s_p_image.clip_draw(0, 0, 1022, 1022, self.s_p_x, self.p_y, 100, 100)
         self.v_p_image.clip_draw(0, 0, 1022, 1022, self.v_p_x, self.p_y, 100, 100)
 
+        for key, info in self.unit_map.items():
+            if self.unit_placed.get(key, False):
+                x = info['x']
+                left = x - 50
+                bottom = self.p_y - 50
+                right = x + 50
+                top = self.p_y + 50
+                draw_rectangle(left, bottom, right, top)
+
     def handle_event(self, event):
         self.state_machine.handle_state_event(('INPUT', event))
