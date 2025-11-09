@@ -50,13 +50,13 @@ class Healer:
         )
     def get_at_bound(self):
         if self.face_dir == 0:
-            return self.x - 50, self.y - 150, self.x + 350, self.y + 170
+            return self.x - 150, self.y - 150, self.x + 250, self.y + 170
         elif self.face_dir == 1:
-            return self.x + 50, self.y - 150, self.x - 350, self.y + 170
+            return self.x + 150, self.y - 150, self.x - 250, self.y + 170
         elif self.face_dir == 2:
-            return self.x - 150, self.y - 30, self.x + 150, self.y + 350
+            return self.x - 150, self.y - 120, self.x + 150, self.y + 250
         else:
-            return self.x - 150, self.y + 70, self.x + 150, self.y - 350
+            return self.x - 150, self.y + 170, self.x + 150, self.y - 250
     def draw(self):
         self.state_machine.draw()
     def update(self):
