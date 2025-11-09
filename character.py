@@ -6,9 +6,14 @@ from collections import OrderedDict
 
 import game_world
 import play_mode
-from archer import Archer
 from state_machine import StateMachine
+
 from Knight import Knight
+from Archer import Archer
+from Hptank import Hptank
+from Dptank import Dptank
+from Healer import Healer
+from Vanguard import Vanguard
 
 def left_m_down(e):
     return isinstance(e, tuple) and len(e) >= 2 and e[0] == 'INPUT' and getattr(e[1], 'type', None) == SDL_MOUSEBUTTONDOWN and getattr(e[1], 'button', None) == SDL_BUTTON_LEFT
@@ -110,7 +115,10 @@ class Character:
         self.unit_map = OrderedDict([
             ('knight', {'x': self.k_p_x, 'image': self.k_p_image, 'class': Knight}),
             ('archer', {'x': self.a_p_x, 'image': self.a_p_image, 'class': Archer}),
-            # 나중에 다른 유닛 추가: ('hptank', {'x': self.h_p_x, 'image': self.h_p_image, 'class': HPTank})
+            ('hptank', {'x': self.h_p_x, 'image': self.h_p_image, 'class': Hptank}),
+            ('dptank', {'x': self.d_p_x, 'image': self.d_p_image, 'class': Dptank}),
+            ('healer', {'x': self.s_p_x, 'image': self.s_p_image, 'class': Healer}),
+            ('vanguard', {'x': self.v_p_x, 'image': self.v_p_image, 'class': Vanguard}),
         ])
 
         self.placing_unit = None
