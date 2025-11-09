@@ -1,4 +1,4 @@
-from pico2d import load_image
+from pico2d import load_image, draw_rectangle
 
 from state_machine import StateMachine
 
@@ -22,6 +22,18 @@ class Idle:
             # 'h' 플래그로 수평 반전
             self.archer.image.clip_composite_draw(0, 0, 100, 100, 0, 'h', x, y+50, 150, 160)
 
+class BorderOverlay:
+    """
+    유닛의 get_at_bound() 를 이용해 경계 사각형만 그리는 오버레이.
+    이 객체를 항상 최상위 레이어에 추가하면 타일보다 위에 그려짐.
+    """
+    def __init__(self, unit):
+        self.unit = unit
+    def draw(self):
+        if hasattr(self.unit, 'get_at_bound'):
+            draw_rectangle(*self.unit.get_at_bound())
+    def update(self):
+        pass
 
 class Archer:
     image = None
@@ -48,7 +60,15 @@ class Archer:
                 self.IDLE : {}
              }
         )
-
+    def get_at_bound(self):
+        if self.face_dir == 0:
+            return self.x - 50, self.y - 150, self.x + 350, self.y + 170
+        elif self.face_dir == 1:
+            return self.x + 50, self.y - 150, self.x - 350, self.y + 170
+        elif self.face_dir == 2:
+            return self.x - 150, self.y - 30, self.x + 150, self.y + 350
+        else:
+            return self.x - 150, self.y + 70, self.x + 150, self.y - 350
     def draw(self):
         self.state_machine.draw()
     def update(self):

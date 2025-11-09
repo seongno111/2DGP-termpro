@@ -26,7 +26,7 @@ class Tile:
         if self.depth == 0:
             self.image_first.clip_draw(0, 0, 100, 100, x, y)
         elif self.depth == 1:
-            self.image_second.clip_draw(0, 0,100, 140, x, y+20)
+            self.image_second.clip_draw(0, 0,47, 65, x, y, 100, 160)
         if self.depth == 2:
             self.image_first.clip_draw(0, 0, 100, 100, x, y)
             self.image_third.clip_draw(48 * self.frame, 0, 48, 45, x, y, 100, 110)
