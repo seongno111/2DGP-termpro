@@ -1,6 +1,7 @@
 from pico2d import load_image, get_canvas_height
 
 import game_framework
+import game_world
 from Tile import Tile
 from state_machine import StateMachine
 
@@ -27,7 +28,7 @@ class Idle:
         pass
     def draw(self):
         x = self.monster.x
-        y = self.monster.y + 50
+        y = self.monster.y + 30
         face = getattr(self.monster, 'face_dir', 0)
         # face == 0: 오른쪽(정방향), 그 외: 좌우 반전
         if face == 0:
@@ -68,6 +69,8 @@ class Monster:
         self.state_machine.draw()
     def update(self):
         self.state_machine.update()
+        if self.x > 950:
+            game_world.remove_object(self)
     def handle_event(self, event):
         self.state_machine.handle_state_event(('INPUT', event))
 

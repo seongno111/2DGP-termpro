@@ -23,7 +23,7 @@ stage_temp = [2, 2, 2, 2, 2, 2, 2, 2,2,2
 _spawn_positions = []
 _spawn_index = 0
 _last_spawn_time = 0.0
-_spawn_interval = 5.0  # 초
+_spawn_interval = 2.0  # 초
 
 def handle_events():
     global running

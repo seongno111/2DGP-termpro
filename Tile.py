@@ -14,7 +14,7 @@ class Tile:
             self.image_second = load_image('floor_nd.png')
         if self.image_third is None and self.depth == 2:
             self.image_first = load_image('ground.png')
-            self.image_third = load_image('de_place.png')
+            self.image_third = load_image('cave.png')
         self.frame = 0
     def draw(self):
         canvas_h = get_canvas_height()
@@ -26,10 +26,10 @@ class Tile:
         if self.depth == 0:
             self.image_first.clip_draw(0, 0, 100, 100, x, y)
         elif self.depth == 1:
-            self.image_second.clip_draw(0, 0,47, 65, x, y, 100, 160)
+            self.image_second.clip_draw(0, 0, 47, 65, x, y, 100, 160)
         if self.depth == 2:
             self.image_first.clip_draw(0, 0, 100, 100, x, y)
-            self.image_third.clip_draw(48 * self.frame, 0, 48, 45, x, y, 100, 110)
+            self.image_third.clip_composite_draw(0, 0, 78, 47, 0, 'h', x, y, 140, 160)
     def update(self):
         if self.depth == 2:
             self.frame += 1
