@@ -48,7 +48,15 @@ class Vanguard:
                 self.IDLE : {}
              }
         )
-
+    def get_at_bound(self):
+        if self.face_dir == 0:
+            return self.x-50, self.y - 50, self.x + 150, self.y + 50
+        elif self.face_dir == 1:
+            return self.x+50, self.y - 50, self.x - 150, self.y + 50
+        elif self.face_dir == 2:
+            return self.x -50, self.y -50, self.x +50, self.y + 150
+        else:
+            return self.x -50, self.y +50, self.x +50, self.y - 150
     def draw(self):
         self.state_machine.draw()
     def update(self):
