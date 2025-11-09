@@ -8,7 +8,7 @@ import game_world
 import play_mode
 from state_machine import StateMachine
 
-from Knight import Knight, BorderOverlay
+from Knight import Knight
 from Archer import Archer
 from Hptank import Hptank
 from Dptank import Dptank
@@ -43,6 +43,19 @@ def _get_mouse_pos(ev):
     except Exception:
         my = my_raw
     return mx, my
+
+class BorderOverlay:
+    """
+    유닛의 get_at_bound() 를 이용해 경계 사각형만 그리는 오버레이.
+    이 객체를 항상 최상위 레이어에 추가하면 타일보다 위에 그려짐.
+    """
+    def __init__(self, unit):
+        self.unit = unit
+    def draw(self):
+        if hasattr(self.unit, 'get_at_bound'):
+            draw_rectangle(*self.unit.get_at_bound())
+    def update(self):
+        pass
 
 class Decide:
     def __init__(self, character):
