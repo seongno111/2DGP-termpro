@@ -3,7 +3,6 @@ from pico2d import *
 from sdl2 import SDL_BUTTON_LEFT, SDL_MOUSEBUTTONDOWN, SDL_MOUSEBUTTONUP, SDL_MOUSEMOTION, SDL_GetMouseState
 from ctypes import c_int
 from collections import OrderedDict
-
 import game_world
 import play_mode
 from state_machine import StateMachine
@@ -112,6 +111,8 @@ class Character:
         self.d_p_x = 350
         self.s_p_x = 450
         self.v_p_x = 550
+        self.font = load_font('ENCR10B.TTF', 32)
+        self.cost = 20
         if self.k_p_image is None:
             self.k_p_image = load_image('Knight_portrait.png')
         if self.a_p_image is None:
@@ -287,7 +288,7 @@ class Character:
         self.d_p_image.clip_draw(0, 0, 1022, 1022, self.d_p_x, self.p_y, 100, 100)
         self.s_p_image.clip_draw(0, 0, 1022, 1022, self.s_p_x, self.p_y, 100, 100)
         self.v_p_image.clip_draw(0, 0, 1022, 1022, self.v_p_x, self.p_y, 100, 100)
-
+        self.font.draw(0,110, f'{self.cost:02d}', (255, 255, 0))
         for key, info in self.unit_map.items():
             if self.unit_placed.get(key, False):
                 x = info['x']
