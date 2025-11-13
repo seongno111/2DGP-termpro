@@ -3,6 +3,8 @@ from pico2d import *
 from sdl2 import SDL_BUTTON_LEFT, SDL_MOUSEBUTTONDOWN, SDL_MOUSEBUTTONUP, SDL_MOUSEMOTION, SDL_GetMouseState
 from ctypes import c_int
 from collections import OrderedDict
+
+import game_framework
 import game_world
 import play_mode
 from state_machine import StateMachine
@@ -126,6 +128,8 @@ class Character:
         if self.v_p_image is None:
             self.v_p_image = load_image('Vanguard_portrait.png')
 
+        self.occupied_tiles = set()
+
         self.unit_map = OrderedDict([
             ('knight', {'x': self.k_p_x, 'image': self.k_p_image, 'class': Knight}),
             ('archer', {'x': self.a_p_x, 'image': self.a_p_image, 'class': Archer}),
@@ -191,6 +195,11 @@ class Character:
                 print("Idx out of range")
                 return False
 
+            # 새로 추가된 점유 검사
+            if idx in self.occupied_tiles:
+                print(f"Tile {idx} already occupied -> cannot place here")
+                return False
+
             tile_depth = play_mode.stage_temp[idx] - 1
             unit_cls = self.unit_map[self.placing_unit]['class']
             candidate_depth = unit_cls().depth
@@ -212,11 +221,12 @@ class Character:
             unit._overlay = overlay  # 필요하면 참조 저장
             game_world.add_object(overlay, 7)
 
-            # 배치 완료 처리: 플래그 설정
+            # 배치 완료 처리: 플래그 설정 및 타일 점유 기록
             placed_key = self.placing_unit
             self.unit_placed[placed_key] = True
             self._placed_unit = unit
             self.placing_unit = None
+            self.occupied_tiles.add(idx)  # 여기에 추가
             print(f"{placed_key} placed at idx={idx}, x={unit.x}, y={unit.y}")
             return True
 
@@ -279,6 +289,7 @@ class Character:
             self.placing = True
 
     def update(self):
+        self.cost = (self.cost + game_framework.frame_time)
         pass
 
     def draw(self):
@@ -288,7 +299,7 @@ class Character:
         self.d_p_image.clip_draw(0, 0, 1022, 1022, self.d_p_x, self.p_y, 100, 100)
         self.s_p_image.clip_draw(0, 0, 1022, 1022, self.s_p_x, self.p_y, 100, 100)
         self.v_p_image.clip_draw(0, 0, 1022, 1022, self.v_p_x, self.p_y, 100, 100)
-        self.font.draw(0,110, f'{self.cost:02d}', (255, 255, 0))
+        self.font.draw(0,110, f'{int(self.cost):02d}', (255, 255, 0))
         for key, info in self.unit_map.items():
             if self.unit_placed.get(key, False):
                 x = info['x']
