@@ -56,10 +56,19 @@ class Knight:
             return self.x -50, self.y -50, self.x +50, self.y + 150
         else:
             return self.x -50, self.y +50, self.x +50, self.y - 150
+
     def draw(self):
         self.state_machine.draw()
 
+    def get_bb(self):
+        return self.x - 50, self.y - 50, self.x + 50, self.y + 50
+
     def update(self):
         self.state_machine.update()
+
     def handle_event(self, event):
         self.state_machine.handle_state_event(('INPUT',event))
+
+    def handle_collision(self, group, other):
+        if group == 'KNIGHT:MONSTER':
+            pass

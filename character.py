@@ -220,6 +220,8 @@ class Character:
             unit.tile_center_y = unit.y
 
             game_world.add_object(unit, (get_canvas_height() - my) // 100)
+            group = f'{unit.__class__.__name__.upper()}:MONSTER'
+            game_world.add_collision_pair(group, unit, None)
 
             overlay = BorderOverlay(unit)
             unit._overlay = overlay

@@ -14,6 +14,7 @@ RUN_SPEED_PPS = (RUN_SPEED_MPS * PIXEL_PER_METER)
 TIME_PER_ACTION = 0.8
 ACTION_PER_TIME = 1.0 / TIME_PER_ACTION
 FRAMES_PER_ACTION = 2
+FRAMES_PER_ACTION_ac = 3
 
 class Idle:
     def __init__(self, monster):
@@ -36,8 +37,31 @@ class Idle:
         else:
             self.monster.image[int(self.monster.frame)].clip_composite_draw(0, 0, 100, 100, 0, 'h', x, y, 150, 150)
 
+class Atack_state:
+    def __init__(self, monster):
+        self.monster = monster
+    def enter(self, e):
+        self.monster.frame = 0
+        pass
+    def exit(self, e):
+        self.monster.frame = 0
+        pass
+    def do(self):
+        self.monster.frame = (self.monster.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 3
+
+    def draw(self):
+        x = self.monster.x
+        y = self.monster.y + 30
+        face = getattr(self.monster, 'face_dir', 0)
+        # face == 0: 오른쪽(정방향), 그 외: 좌우 반전
+        if face == 0:
+            self.monster.image[int(self.monster.frame)].clip_draw(0, 0, 100, 100, x, y, 150, 150)
+        else:
+            self.monster.image[int(self.monster.frame)].clip_composite_draw(0, 0, 100, 100, 0, 'h', x, y, 150, 150)
+
 class Monster:
     image = []
+    image.append(None)
     image.append(None)
     image.append(None)
     def __init__(self, num):
@@ -58,11 +82,14 @@ class Monster:
         if self.image[0] is None:
             self.image[0] = load_image('brownbear_01.png')
             self.image[1] = load_image('brownbear_02.png')
+            self.image[2] = load_image('brownbear_03.png')
         self.IDLE = Idle(self)
+        self.ATK = Atack_state(self)
         self.state_machine = StateMachine(
             self.IDLE,
             {
-                self.IDLE: {}
+                self.IDLE: {},
+                self.ATK: {}
             }
         )
     def draw(self):
@@ -71,6 +98,10 @@ class Monster:
         self.state_machine.update()
         if self.x > 950:
             game_world.remove_object(self)
+    def get_bb(self):
+        return self.x - 50, self.y - 50, self.x + 50, self.y + 50
     def handle_event(self, event):
         self.state_machine.handle_state_event(('INPUT', event))
+    def handle_collision(self, group, other):
+        pass
 
