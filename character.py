@@ -131,12 +131,12 @@ class Character:
         self.occupied_tiles = set()
 
         self.unit_map = OrderedDict([
-            ('knight', {'x': self.k_p_x, 'image': self.k_p_image, 'class': Knight}),
-            ('archer', {'x': self.a_p_x, 'image': self.a_p_image, 'class': Archer}),
-            ('hptank', {'x': self.h_p_x, 'image': self.h_p_image, 'class': Hptank}),
-            ('dptank', {'x': self.d_p_x, 'image': self.d_p_image, 'class': Dptank}),
-            ('healer', {'x': self.s_p_x, 'image': self.s_p_image, 'class': Healer}),
-            ('vanguard', {'x': self.v_p_x, 'image': self.v_p_image, 'class': Vanguard}),
+            ('knight', {'x': self.k_p_x, 'image': self.k_p_image, 'class': Knight, 'cost': 19}),
+            ('archer', {'x': self.a_p_x, 'image': self.a_p_image, 'class': Archer, 'cost': 14}),
+            ('hptank', {'x': self.h_p_x, 'image': self.h_p_image, 'class': Hptank, 'cost': 22}),
+            ('dptank', {'x': self.d_p_x, 'image': self.d_p_image, 'class': Dptank, 'cost': 22}),
+            ('healer', {'x': self.s_p_x, 'image': self.s_p_image, 'class': Healer, 'cost': 14}),
+            ('vanguard', {'x': self.v_p_x, 'image': self.v_p_image, 'class': Vanguard, 'cost': 12}),
         ])
 
         self.placing_unit = None
@@ -161,7 +161,12 @@ class Character:
                     if self.unit_placed.get(key, False):
                         print(f"Portrait clicked: {key} already placed -> cannot start placing")
                         return False
-                    print(f"Portrait clicked: setting placing_unit={key}")
+                    unit_cost = info.get('cost', 0)
+                    if self.cost < unit_cost:
+                        print(f"Not enough cost to place {key}: need={unit_cost}, have={int(self.cost)}")
+                        # 여기에서 부족 피드백(사운드/효과)을 호출하면 됨
+                        return False
+                    print(f"Portrait clicked: setting placing_unit={key} (cost={unit_cost})")
                     self.placing_unit = key
                     return True
             return False
@@ -195,7 +200,6 @@ class Character:
                 print("Idx out of range")
                 return False
 
-            # 새로 추가된 점유 검사
             if idx in self.occupied_tiles:
                 print(f"Tile {idx} already occupied -> cannot place here")
                 return False
@@ -218,16 +222,24 @@ class Character:
             game_world.add_object(unit, (get_canvas_height() - my) // 100)
 
             overlay = BorderOverlay(unit)
-            unit._overlay = overlay  # 필요하면 참조 저장
+            unit._overlay = overlay
             game_world.add_object(overlay, 7)
 
-            # 배치 완료 처리: 플래그 설정 및 타일 점유 기록
+            # 배치 완료 처리 및 코스트 차감
             placed_key = self.placing_unit
+            unit_cost = self.unit_map[placed_key].get('cost', 0)
             self.unit_placed[placed_key] = True
             self._placed_unit = unit
             self.placing_unit = None
-            self.occupied_tiles.add(idx)  # 여기에 추가
-            print(f"{placed_key} placed at idx={idx}, x={unit.x}, y={unit.y}")
+            self.occupied_tiles.add(idx)
+
+            # 실제로 비용을 차감
+            self.cost -= unit_cost
+            if self.cost < 0:
+                self.cost = 0
+
+            print(
+                f"{placed_key} placed at idx={idx}, x={unit.x}, y={unit.y}, cost_paid={unit_cost}, remaining_cost={int(self.cost)}")
             return True
 
         def _motion_update_direction(ev_tuple):
