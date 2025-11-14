@@ -31,7 +31,7 @@ class Dptank:
         self.frame = 0
         self.face_dir = 0
         self.Hp = 1500
-        self.Def = 50
+        self.Def = 30
         self.Atk = 60
         self.number = 4
         self.tile_w = 100
@@ -61,5 +61,10 @@ class Dptank:
         self.state_machine.draw()
     def update(self):
         self.state_machine.update()
+    def get_bb(self):
+        return self.x - 50, self.y - 50, self.x + 50, self.y + 50
+    def handle_collision(self, group, other):
+        if group == 'DPTANK:MONSTER':
+            pass
     def handle_event(self, event):
         self.state_machine.handle_state_event(('INPUT',event))

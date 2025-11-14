@@ -59,6 +59,11 @@ class Hptank:
             return self.x -50, self.y +50, self.x +50, self.y - 50
     def draw(self):
         self.state_machine.draw()
+    def get_bb(self):
+        return self.x - 50, self.y - 50, self.x + 50, self.y + 50
+    def handle_collision(self, group, other):
+        if group == 'HPTANK:MONSTER':
+            pass
     def update(self):
         self.state_machine.update()
     def handle_event(self, event):

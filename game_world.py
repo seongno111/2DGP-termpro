@@ -31,6 +31,7 @@ def render():
     for layer in world:
         for o in layer:
             o.draw()
+    handle_collisions()
 
 
 def clear():

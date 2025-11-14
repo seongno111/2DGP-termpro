@@ -61,5 +61,10 @@ class Healer:
         self.state_machine.draw()
     def update(self):
         self.state_machine.update()
+    def get_bb(self):
+        return self.x - 20, self.y - 20, self.x + 20, self.y + 20
+    def handle_collision(self, group, other):
+        if group == 'HEALER:MONSTER':
+            pass
     def handle_event(self, event):
         self.state_machine.handle_state_event(('INPUT',event))

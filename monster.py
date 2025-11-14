@@ -42,12 +42,46 @@ class Atack_state:
         self.monster = monster
     def enter(self, e):
         self.monster.frame = 0
-        pass
+        self.attack_timer = 0.0
+        if isinstance(e, tuple) and len(e) >= 3:
+            self.monster.target = e[2]
+        else:
+            self.monster.target = None
     def exit(self, e):
         self.monster.frame = 0
-        pass
+        self.attack_timer = 0.0
     def do(self):
         self.monster.frame = (self.monster.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 3
+        target = getattr(self.monster, 'target', None)
+        # 만약 대상이 없거나 충돌이 끊기면 SEPARATE 이벤트 발생
+        if target is None or not game_world.collide(self.monster, target):
+            self.monster.state_machine.handle_state_event(('SEPARATE', None))
+            return
+        # 공격 간격 (초)
+        ATTACK_INTERVAL = 0.8
+        self.attack_timer += game_framework.frame_time
+        if self.attack_timer >= ATTACK_INTERVAL:
+            self.attack_timer -= ATTACK_INTERVAL
+            dmg = max(0, self.monster.Atk - getattr(target, 'Def', 0))
+            # 체력 감소
+            target.Hp -= dmg
+            # 디버그 출력
+            print(
+                f'Monster({self.monster.num}) attacked {target.__class__.__name__} dmg={dmg} target_hp={getattr(target, "Hp", "?")}')
+            # 대상이 죽으면 제거 및 충돌 리스트에서 제거, 상태복귀
+            if getattr(target, 'Hp', 1) <= 0:
+                print(f'{target.__class__.__name__} died.')
+                try:
+                    game_world.remove_object(target)
+                except Exception:
+                    pass
+                # collision_pairs에서 제거
+                try:
+                    game_world.remove_collision_object(target)
+                except Exception:
+                    pass
+                self.monster.target = None
+                self.monster.state_machine.handle_state_event(('SEPARATE', None))
 
     def draw(self):
         x = self.monster.x
@@ -79,29 +113,56 @@ class Monster:
         self.Atk = 50
         self.frame = 0
         self.face_dir = 0  # 1: right, -1: left
+        self.target = None
         if self.image[0] is None:
             self.image[0] = load_image('brownbear_01.png')
             self.image[1] = load_image('brownbear_02.png')
             self.image[2] = load_image('brownbear_03.png')
         self.IDLE = Idle(self)
         self.ATK = Atack_state(self)
+
+        # 이벤트 검사기들
+        def _on_collide(ev):
+            return isinstance(ev, tuple) and len(ev) >= 3 and ev[0] == 'COLLIDE' and isinstance(ev[2], object)
+
+        def _on_separate(ev):
+            return isinstance(ev, tuple) and len(ev) >= 1 and ev[0] == 'SEPARATE'
+
         self.state_machine = StateMachine(
             self.IDLE,
             {
-                self.IDLE: {},
-                self.ATK: {}
+                self.IDLE: {
+                    _on_collide: self.ATK
+                },
+                self.ATK: {
+                    _on_separate: self.IDLE
+                }
             }
         )
+        unit_groups = ['KNIGHT', 'ARCHER', 'HPTANK', 'DPTANK', 'HEALER', 'VANGUARD']
+        for ug in unit_groups:
+            game_world.add_collision_pair(f'{ug}:MONSTER', None, self)
+
     def draw(self):
         self.state_machine.draw()
     def update(self):
         self.state_machine.update()
         if self.x > 950:
             game_world.remove_object(self)
+            try:
+                game_world.remove_collision_object(self)
+            except Exception:
+                pass
+            try:
+                game_world.remove_object(self)
+            except Exception:
+                pass
     def get_bb(self):
         return self.x - 50, self.y - 50, self.x + 50, self.y + 50
     def handle_event(self, event):
         self.state_machine.handle_state_event(('INPUT', event))
     def handle_collision(self, group, other):
-        pass
+        self.state_machine.handle_state_event(('COLLIDE', group, other))
+        # 보조로 target 설정 (enter에서도 처리함)
+        self.target = other
 
