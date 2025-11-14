@@ -38,6 +38,27 @@ def clear():
     for layer in world:
         layer.clear()
 
+def in_attack_range(a, b):
+    """
+    a: 공격자(예: Knight) - must implement get_at_bound()
+    b: 대상(예: Monster) - must implement get_bb()
+    반환: 대상이 공격자의 get_at_bound() 범위에 들어있으면 True
+    """
+    try:
+        left_a, bottom_a, right_a, top_a = a.get_at_bound()
+    except Exception:
+        return False
+    try:
+        left_b, bottom_b, right_b, top_b = b.get_bb()
+    except Exception:
+        return False
+
+    if left_a > right_b: return False
+    if right_a < left_b: return False
+    if top_a < bottom_b: return False
+    if bottom_a > top_b: return False
+    return True
+
 def collide(a, b):
     left_a, bottom_a, right_a, top_a = a.get_bb()
     left_b, bottom_b, right_b, top_b = b.get_bb()
@@ -63,8 +84,37 @@ def add_collision_pair(group, a, b):
 
 def handle_collisions():
     for group, pairs in collision_pairs.items():
+        left, right = (group.split(':') + ['', ''])[:2]
+        left = left.strip().upper()
+        right = right.strip().upper()
+
+        use_range = ((left == 'KNIGHT' and right == 'MONSTER') or (left == 'MONSTER' and right == 'KNIGHT'))
+
         for a in pairs[0]:
             for b in pairs[1]:
-                if collide(a,b):
-                    a.handle_collision(group,b)
-                    b.handle_collision(group,a)
+                collided = False
+                try:
+                    if use_range:
+                        # 범위 판정과 물리 충돌을 따로 계산
+                        in_range_a_b = in_attack_range(a, b)
+                        in_range_b_a = in_attack_range(b, a)
+                        phys_collide = collide(a, b)
+
+                        if phys_collide:
+                            # 실제 충돌이면 양쪽 모두 알림 (기존 동작)
+                            a.handle_collision(group, b)
+                            b.handle_collision(group, a)
+                        else:
+                            # 범위에만 들어간 경우: 기사 쪽(왼/오른쪽 중 KNIGHT인 쪽)만 알림
+                            if left == 'KNIGHT' and in_range_a_b:
+                                a.handle_collision(group, b)
+                            if right == 'KNIGHT' and in_range_b_a:
+                                b.handle_collision(group, a)
+                    else:
+                        collided = collide(a, b)
+                        if collided:
+                            a.handle_collision(group, b)
+                            b.handle_collision(group, a)
+                except Exception:
+                    # 예외시 무시 (기존 코드와 동일하게 실패 안전)
+                    pass

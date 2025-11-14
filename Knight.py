@@ -48,8 +48,9 @@ class Attack:
         # 애니 프레임 업데이트
         self.knight.frame = (self.knight.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 5
         target = getattr(self.knight, 'target', None)
-        # 충돌이 끊기거나 타겟이 없으면 분리
-        if target is None or not game_world.collide(self.knight, target):
+        # 충돌이 끊기거나 타겟이 없으면 SEPARATE 이벤트 발생
+        # 기존 game_world.collide 대신 game_world.in_attack_range 사용
+        if target is None or not game_world.in_attack_range(self.knight, target):
             self.knight.state_machine.handle_state_event(('SEPARATE', None))
             return
         # 공격 간격
@@ -79,14 +80,20 @@ class Attack:
         y = self.knight.y + 50
         if getattr(self.knight, 'face_dir', 0) == 0 or getattr(self.knight, 'face_dir', 0) == 2:
             self.knight.image[int(self.knight.frame)+1].clip_draw(0, 0, 100, 100, x, y, 150, 160)
+            if self.knight.frame >= 3:
+                self.knight.image_at[int(self.knight.frame)-3].clip_draw(0, 0, 124, 117, x + 50, y-20, 100, 160)
         else:
             self.knight.image[int(self.knight.frame)+1].clip_composite_draw(0, 0, 100, 100, 0, 'h', x, y, 150, 160)
-
+            if self.knight.frame >= 3:
+                self.knight.image_at[int(self.knight.frame)-3].clip_composite_draw(0, 0,  124, 117, 0, 'h', x-50, y-20, 150, 160)
 
 class Knight:
     image = []
+    image_at = []
     for i in range(8):
         image.append(None)
+    for i in range(3):
+        image_at.append(None)
     def __init__(self):
         self.depth = 0
         self.x, self.y = 0, 0
@@ -109,6 +116,10 @@ class Knight:
             self.image[4] = load_image('tuar03_05.png')
             self.image[5] = load_image('tuar03_06.png')
             self.image[7] = load_image('tuar03_07.png')
+        if self.image_at[0] is None:
+            self.image_at[0] = load_image('k_at_ef_01.png')
+            self.image_at[1] = load_image('k_at_ef_02.png')
+            self.image_at[2] = load_image('k_at_ef_03.png')
         self.IDLE = Idle(self)
         self.ATK = Attack(self)
 
@@ -132,13 +143,19 @@ class Knight:
         self.target = None
     def get_at_bound(self):
         if self.face_dir == 0:
-            return self.x-50, self.y - 50, self.x + 150, self.y + 50
+            x1, y1, x2, y2 = self.x - 50, self.y - 50, self.x + 150, self.y + 50
         elif self.face_dir == 1:
-            return self.x+50, self.y - 50, self.x - 150, self.y + 50
+            x1, y1, x2, y2 = self.x - 150, self.y - 50, self.x + 50, self.y + 50
         elif self.face_dir == 2:
-            return self.x -50, self.y -50, self.x +50, self.y + 150
+            x1, y1, x2, y2 = self.x - 50, self.y - 50, self.x + 50, self.y + 150
         else:
-            return self.x -50, self.y +50, self.x +50, self.y - 150
+            x1, y1, x2, y2 = self.x - 50, self.y - 150, self.x + 50, self.y + 50
+
+        left = min(x1, x2)
+        bottom = min(y1, y2)
+        right = max(x1, x2)
+        top = max(y1, y2)
+        return left, bottom, right, top
 
     def draw(self):
         self.state_machine.draw()
@@ -161,6 +178,7 @@ class Knight:
 
         # KNIGHT와 MONSTER 간 충돌인 경우에만 특별 처리 (양방향 허용)
         if (left == 'KNIGHT' and right == 'MONSTER') or (left == 'MONSTER' and right == 'KNIGHT'):
+            # game_world.handle_collisions에서 범위 판정으로 여기까지 왔으므로 바로 타겟 설정
             self.target = other
             self.state_machine.handle_state_event(('COLLIDE', group, other))
             return
