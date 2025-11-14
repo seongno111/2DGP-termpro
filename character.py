@@ -212,12 +212,17 @@ class Character:
             if tile_depth != candidate_depth:
                 print("Depth mismatch -> cannot place here")
                 return False
+            placed_key = self.placing_unit
 
             unit = unit_cls()
             unit.x = col * TILE_W + TILE_W // 2
             unit.y = (get_canvas_height() - ((row + 1) * TILE_H)) + TILE_H // 2
             unit.tile_center_x = unit.x
             unit.tile_center_y = unit.y
+
+            # 배치 정보를 유닛에 저장 (나중에 죽었을 때 character를 갱신하기 위함)
+            unit._placed_key = placed_key
+            unit._placed_idx = idx
 
             game_world.add_object(unit, (get_canvas_height() - my) // 100)
             group = f'{unit.__class__.__name__.upper()}:MONSTER'

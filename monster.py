@@ -71,15 +71,37 @@ class Atack_state:
             # 대상이 죽으면 제거 및 충돌 리스트에서 제거, 상태복귀
             if getattr(target, 'Hp', 1) <= 0:
                 print(f'{target.__class__.__name__} died.')
+                # 오버레이가 있으면 먼저 제거
+                try:
+                    if hasattr(target, '_overlay'):
+                        game_world.remove_object(target._overlay)
+                except Exception:
+                    pass
+
+                # 유닛 객체 제거 및 충돌 정보 제거
                 try:
                     game_world.remove_object(target)
                 except Exception:
                     pass
-                # collision_pairs에서 제거
                 try:
                     game_world.remove_collision_object(target)
                 except Exception:
                     pass
+
+                # play_mode.character가 있으면 배치 상태와 occupied_tiles 갱신
+                try:
+                    import play_mode
+                    ch = getattr(play_mode, 'character', None)
+                    if ch is not None:
+                        key = getattr(target, '_placed_key', None)
+                        idx = getattr(target, '_placed_idx', None)
+                        if key:
+                            ch.unit_placed[key] = False
+                        if idx is not None and idx in ch.occupied_tiles:
+                            ch.occupied_tiles.remove(idx)
+                except Exception:
+                    pass
+
                 self.monster.target = None
                 self.monster.state_machine.handle_state_event(('SEPARATE', None))
 
@@ -108,7 +130,7 @@ class Monster:
         tile_cy = canvas_h - (row * th + th // 2)
 
         self.x, self.y = tile_cx, tile_cy
-        self.Hp = 500
+        self.Hp = 100
         self.Def = 5
         self.Atk = 50
         self.frame = 0
@@ -162,7 +184,16 @@ class Monster:
     def handle_event(self, event):
         self.state_machine.handle_state_event(('INPUT', event))
     def handle_collision(self, group, other):
-        self.state_machine.handle_state_event(('COLLIDE', group, other))
-        # 보조로 target 설정 (enter에서도 처리함)
-        self.target = other
+        left, right = (group.split(':') + ['', ''])[:2]
+        left = left.strip().upper()
+        right = right.strip().upper()
 
+        # KNIGHT와 MONSTER 간 충돌인 경우에만 특별 처리 (양방향 허용)
+        if (left == 'KNIGHT' and right == 'MONSTER') or (left == 'MONSTER' and right == 'KNIGHT'):
+            self.target = other
+            self.state_machine.handle_state_event(('COLLIDE', group, other))
+            return
+
+        # 기본 폴백 (다른 그룹이 추가될 경우 대응)
+        self.target = other
+        self.state_machine.handle_state_event(('COLLIDE', group, other))
