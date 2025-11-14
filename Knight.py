@@ -1,4 +1,4 @@
-from pico2d import load_image, draw_rectangle
+from pico2d import load_image, draw_rectangle, load_font
 
 import game_framework
 from state_machine import StateMachine
@@ -7,7 +7,7 @@ from state_machine import StateMachine
 TIME_PER_ACTION = 0.8
 ACTION_PER_TIME = 1.0 / TIME_PER_ACTION
 FRAMES_PER_ACTION = 2
-FRAMES_PER_ACTION_ac = 3
+FRAMES_PER_ACTION_ac = 5
 
 class Idle:
     def __init__(self, knight):
@@ -46,6 +46,7 @@ class Knight:
         self.tile_h = 100
         self.tile_center_x = 0
         self.tile_center_y = 0
+        self.font = load_font('ENCR10B.TTF', 30)
         if self.image[0] is None:
             self.image[0] = load_image('tuar03_01.png')
             self.image[1] = load_image('tuar03_02.png')
@@ -55,7 +56,6 @@ class Knight:
             self.image[5] = load_image('tuar03_06.png')
             self.image[7] = load_image('tuar03_07.png')
         self.IDLE = Idle(self)
-
         self.state_machine = StateMachine(
             self.IDLE,
             {
@@ -74,6 +74,8 @@ class Knight:
 
     def draw(self):
         self.state_machine.draw()
+        for i in range(int((self.Hp/1000)*100//10)):
+            self.font.draw(self.x-50+i*10, self.y+80, f'/', (100, 250, 100))
 
     def get_bb(self):
         return self.x - 50, self.y - 50, self.x + 50, self.y + 50
