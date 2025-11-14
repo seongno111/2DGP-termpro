@@ -38,7 +38,7 @@ class Knight:
         self.tile_center_x = 0
         self.tile_center_y = 0
         if self.image is None:
-            self.image = load_image('knight_01.png')
+            self.image = load_image('tuar_01.png')
         self.IDLE = Idle(self)
 
         self.state_machine = StateMachine(
