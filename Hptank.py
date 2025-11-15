@@ -1,4 +1,4 @@
-from pico2d import load_image
+from pico2d import load_image, load_font
 
 import game_framework
 import game_world
@@ -110,6 +110,7 @@ class Hptank:
         self.x, self.y = 0, 0
         self.frame = 0
         self.face_dir = 0
+        self.max_hp = 2000
         self.Hp = 2000
         self.Def = 10
         self.Atk = 50
@@ -118,6 +119,7 @@ class Hptank:
         self.tile_h = 100
         self.tile_center_x = 0
         self.tile_center_y = 0
+        self.font = load_font('ENCR10B.TTF', 30)
         if self.image[0] is None:
             self.image[0] = load_image('klat01_01.png')
             self.image[1] = load_image('klat01_02.png')
@@ -164,6 +166,8 @@ class Hptank:
 
     def draw(self):
         self.state_machine.draw()
+        for i in range(int((self.Hp / 2000) * 100 // 10)):
+            self.font.draw(self.x - 50 + i * 10, self.y + 80, f'/', (100, 250, 100))
 
     def get_bb(self):
         return self.x - 50, self.y - 50, self.x + 50, self.y + 50

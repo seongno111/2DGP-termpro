@@ -30,6 +30,7 @@ class Healer:
         self.x, self.y = 0, 0
         self.frame = 0
         self.face_dir = 0
+        self.max_hp = 800
         self.Hp = 800
         self.Def = 10
         self.Atk = 200

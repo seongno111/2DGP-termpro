@@ -1,4 +1,4 @@
-from pico2d import load_image, draw_rectangle
+from pico2d import load_image, draw_rectangle, load_font
 
 import game_framework
 import game_world
@@ -99,6 +99,7 @@ class Archer:
         self.x, self.y = 0, 0
         self.frame = 0
         self.face_dir = 0
+        self.max_hp = 700
         self.Hp = 700
         self.Def = 10
         self.Atk = 120
@@ -107,6 +108,7 @@ class Archer:
         self.tile_h = 100
         self.tile_center_x = 0
         self.tile_center_y = 0
+        self.font = load_font('ENCR10B.TTF', 30)
         if self.image[0] is None:
             self.image[0] = load_image('isli01_01.png')
             self.image[1] = load_image('isli01_02.png')
@@ -155,6 +157,8 @@ class Archer:
 
     def draw(self):
         self.state_machine.draw()
+        for i in range(int((self.Hp / 700) * 100 // 10)):
+            self.font.draw(self.x - 50 + i * 10, self.y + 80, f'/', (100, 250, 100))
     def update(self):
         self.state_machine.update()
     def get_bb(self):

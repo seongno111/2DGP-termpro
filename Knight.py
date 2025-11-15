@@ -99,6 +99,7 @@ class Knight:
         self.x, self.y = 0, 0
         self.frame = 0
         self.face_dir = 0 # 0오른쪽, 1왼쪽, 2위, 3아래
+        self.max_hp = 1000
         self.Hp = 1000
         self.Def = 10
         self.Atk = 100
