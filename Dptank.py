@@ -40,7 +40,7 @@ class Attack:
         self.dptank.frame = 0
         self.attack_timer = 0.0
     def do(self):
-        self.dptank.frame = (self.dptank.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 5
+        self.dptank.frame = (self.dptank.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 4
         target = getattr(self.dptank, 'target', None)
         # 타겟 없거나 범위 밖이면 복귀
         if target is None or not game_world.in_attack_range(self.dptank, target):
@@ -71,11 +71,11 @@ class Attack:
         x = self.dptank.x
         y = self.dptank.y + 50
         if getattr(self.dptank, 'face_dir', 0) == 0:
-            self.dptank.image[int(self.dptank.frame)+1].clip_draw(0, 0, 100, 100, x, y, 150, 160)
-            self.dptank.at_image[int(self.dptank.frame)].clip_draw(0, 0, 123, 107, x, y, 150, 160)
+            self.dptank.image[int(self.dptank.frame)+2].clip_draw(0, 0, 100, 100, x, y, 150, 160)
+            self.dptank.at_image[int(self.dptank.frame)+1].clip_draw(0, 0, 123, 107, x+50, y, 150, 160)
         else:
-            self.dptank.image[int(self.dptank.frame)+1].clip_composite_draw(0, 0, 100, 100, 0, 'h', x, y, 150, 160)
-            self.dptank.at_image[int(self.dptank.frame)].clip_composite_draw(0, 0, 123, 107,0, 'h', x, y, 150, 160)
+            self.dptank.image[int(self.dptank.frame)+2].clip_composite_draw(0, 0, 100, 100, 0, 'h', x, y, 150, 160)
+            self.dptank.at_image[int(self.dptank.frame)+1].clip_composite_draw(0, 0, 123, 107,0, 'h', x-50, y, 150, 160)
 
 class Dptank:
     image = []
