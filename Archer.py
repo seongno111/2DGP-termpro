@@ -62,7 +62,7 @@ class Attack:
         if self.attack_timer >= ATTACK_INTERVAL:
             self.attack_timer -= ATTACK_INTERVAL
             # 발사
-            arrow = Archer_Arrow()
+            arrow = Archer_Arrow(self.archer.face_dir)
             arrow.x = self.archer.x
             arrow.y = self.archer.y
             arrow.owner = self.archer
@@ -190,7 +190,8 @@ class Archer_Arrow:
     image = []
     for i in range(4):
         image.append(None)
-    def __init__(self):
+    def __init__(self, dir):
+        self.face = dir
         self.depth = 1
         self.x, self.y = 0, 0
         self.frame = 0
@@ -205,7 +206,10 @@ class Archer_Arrow:
             self.image[1] = load_image('arrow_01_(2).png')
             self.image[2] = load_image('arrow_01_(3).png')
     def draw(self):
-        self.image[int(self.frame)].clip_draw(0, 0, 88, 16, self.x, self.y, 50, 10)
+        if self.face == 0:
+            self.image[int(self.frame)].clip_draw(0, 0, 88, 16, self.x, self.y, 50, 10)
+        else:
+            self.image[int(self.frame)].clip_composite_draw(0, 0, 88, 16,0, 'h', self.x, self.y, 50, 10)
     def update(self):
         self.frame = (self.frame + 3 * ACTION_PER_TIME * game_framework.frame_time) % 3
         if self.removed:
