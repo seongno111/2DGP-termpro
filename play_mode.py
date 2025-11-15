@@ -67,12 +67,22 @@ def spwan_monster():
         if now - _last_spawn_time >= _spawn_interval:
             pos_index = _spawn_positions[_spawn_index]
             monster = Monster(pos_index)
-            # 몬스터는 캐릭터 레이어(예: 2)에 추가
-            game_world.add_object(monster, (get_canvas_height() - monster.y)//100)
+            game_world.add_object(monster, (get_canvas_height() - monster.y) // 100)
+
             if character is not None and hasattr(character, 'unit_map'):
                 for key in character.unit_map.keys():
                     group = f'{key.upper()}:MONSTER'
                     game_world.add_collision_pair(group, None, monster)
+
+            try:
+                for group, pairs in game_world.collision_pairs.items():
+                    left, right = (group.split(':') + ['', ''])[:2]
+                    if right.strip().upper() == 'MONSTER':
+                        if monster not in pairs[1]:
+                            pairs[1].append(monster)
+            except Exception:
+                pass
+
             _spawn_index = (_spawn_index + 1) % len(_spawn_positions)
             _last_spawn_time = now
 

@@ -18,7 +18,7 @@ class Idle:
     def exit(self, e):
         pass
     def do(self):
-        self.archer.frame = (self.archer.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 2
+        self.archer.frame = (self.archer.frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time) % 2
     def draw(self):
         x = self.archer.x
         y = self.archer.y + 50
@@ -42,7 +42,18 @@ class Attack:
     def do(self):
         self.archer.frame = (self.archer.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 5
         target = getattr(self.archer, 'target', None)
-        if target is None or not game_world.in_attack_range(self.archer, target):
+
+        # 타겟이 월드에서 제거되었는지 검사
+        removed_from_world = False
+        try:
+            removed_from_world = not any(target in layer for layer in game_world.world) if target is not None else False
+        except Exception:
+            removed_from_world = True
+
+        # 타겟이 없거나 사망했거나 월드에서 제거되었거나 범위 밖이면 공격 종료
+        if (target is None) or (getattr(target, 'Hp', 1) <= 0) or removed_from_world or (
+        not game_world.in_attack_range(self.archer, target)):
+            self.archer.target = None
             self.archer.state_machine.handle_state_event(('SEPARATE', None))
             return
 
@@ -54,6 +65,9 @@ class Attack:
             arrow = Archer_Arrow()
             arrow.x = self.archer.x
             arrow.y = self.archer.y
+            arrow.owner = self.archer
+            arrow.owner_atk = getattr(self.archer, 'Atk', 120)
+
             # 방향 벡터 계산
             dx = target.x - arrow.x
             dy = target.y - arrow.y
@@ -67,7 +81,6 @@ class Attack:
             arrow.vy = vy
             # add to world and collision pairs
             game_world.add_object(arrow, 7)
-            # ensure group exists and register arrow
             game_world.add_collision_pair('ARCHER_ARROW:MONSTER', arrow, None)
     def draw(self):
         x = self.archer.x
@@ -111,12 +124,14 @@ class Archer:
         def _on_separate(ev):
             return isinstance(ev, tuple) and len(ev) >= 1 and ev[0] == 'SEPARATE'
 
+            # ATK 상태에서도 COLLIDE 이벤트를 자기 자신으로 매핑하여 "처리되지 않은 이벤트" 로그를 방지
+
         self.state_machine = StateMachine(
             self.IDLE,
             {
-                self.IDLE : { _on_collide: self.ATK },
-                self.ATK  : { _on_separate: self.IDLE }
-             }
+                self.IDLE: {_on_collide: self.ATK},
+                self.ATK: {_on_separate: self.IDLE, _on_collide: self.ATK}  # 변경: _on_collide 추가
+            }
         )
         self.target = None
         # 화살-몬스터 충돌 그룹 미리 추가 (나중에 화살을 등록할 때 사용)
@@ -146,20 +161,29 @@ class Archer:
         return self.x - 20, self.y - 20, self.x + 20, self.y + 20
 
     def handle_collision(self, group, other):
+        try:
+            if not any(other in layer for layer in game_world.world):
+                return
+        except Exception:
+            return
+        if getattr(other, 'Hp', 1) <= 0:
+            return
+
         left, right = (group.split(':') + ['', ''])[:2]
         left = left.strip().upper()
         right = right.strip().upper()
-        # 범위 판정으로 들어오면 타겟 설정 후 공격 상태로 전환
+
         if (left == 'ARCHER' and right == 'MONSTER') or (left == 'MONSTER' and right == 'ARCHER'):
+            if getattr(self, 'target', None) is other:
+                return
             self.target = other
             self.state_machine.handle_state_event(('COLLIDE', group, other))
             return
-        # fallback
+
+        if getattr(self, 'target', None) is other:
+            return
         self.target = other
         self.state_machine.handle_state_event(('COLLIDE', group, other))
-
-    def handle_event(self, event):
-        self.state_machine.handle_state_event(('INPUT',event))
 
 
 class Archer_Arrow:
@@ -173,59 +197,79 @@ class Archer_Arrow:
         self.speed = 800
         self.vx = self.speed
         self.vy = 0
+        self.owner = None
+        self.owner_atk = 0
+        self.removed = False
         if self.image[0] is None:
             self.image[0] = load_image('arrow_01_(1).png')
             self.image[1] = load_image('arrow_01_(2).png')
             self.image[2] = load_image('arrow_01_(3).png')
     def draw(self):
-        self.image[int(self.frame) % len(self.image)].clip_draw(0, 0, 88, 16, self.x, self.y, 50, 10)
+        self.image[int(self.frame)].clip_draw(0, 0, 88, 16, self.x, self.y, 50, 10)
     def update(self):
+        self.frame = (self.frame + 3 * ACTION_PER_TIME * game_framework.frame_time) % 3
+        if self.removed:
+            return
         self.x += self.vx * game_framework.frame_time
         self.y += self.vy * game_framework.frame_time
         # 화면 밖이면 제거 시도
         if self.x < -100 or self.x > 1100 or self.y < -200 or self.y > 1200:
-            try:
-                game_world.remove_object(self)
-            except Exception:
-                pass
-            try:
-                game_world.remove_collision_object(self)
-            except Exception:
-                pass
+            self._safe_remove()
     def get_bb(self):
         return self.x - 12, self.y - 4, self.x + 12, self.y + 4
+    def _safe_remove(self):
+        if self.removed:
+            return
+        self.removed = True
+        try:
+            game_world.remove_object(self)
+        except Exception:
+            pass
+        try:
+            game_world.remove_collision_object(self)
+        except Exception:
+            pass
     def handle_collision(self, group, other):
-        # ARCHER_ARROW:MONSTER 에 닿으면 데미지 주고 화살 제거
+        if self.removed:
+            return
         left, right = (group.split(':') + ['', ''])[:2]
         left = left.strip().upper()
         right = right.strip().upper()
-        if (left == 'ARCHER_ARROW' and right == 'MONSTER') or (left == 'MONSTER' and right == 'ARCHER_ARROW'):
-            try:
-                dmg = getattr(self, 'Atk', 0)
-                # 화살의 공격력은 딜러(Archer)의 Atk를 직접 참조할 수 없으므로, 기본값으로 처리
-                if hasattr(other, 'Hp'):
-                    # 데미지는 Archer 기준으로 계산 (간단히 고정값 사용하거나 아처 참조를 저장해도 됨)
-                    dmg = max(0, 120 - getattr(other, 'Def', 0))
-                    other.Hp -= dmg
-                print(f'Archer_Arrow hit Monster dmg={dmg} target_hp={getattr(other, "Hp", "?")}')
-                # 몬스터 사망 처리
-                if getattr(other, 'Hp', 1) <= 0:
-                    try:
-                        game_world.remove_object(other)
-                    except Exception:
-                        pass
-                    try:
-                        game_world.remove_collision_object(other)
-                    except Exception:
-                        pass
-                # 화살 제거
+        if not ((left == 'ARCHER_ARROW' and right == 'MONSTER') or (left == 'MONSTER' and right == 'ARCHER_ARROW')):
+            return
+        try:
+            atk = getattr(self, 'owner_atk', None)
+            if atk is None and self.owner is not None:
+                atk = getattr(self.owner, 'Atk', 0)
+            if atk is None:
+                atk = 0
+            if hasattr(other, 'Hp'):
+                dmg = max(0, int(atk) - getattr(other, 'Def', 0))
+                other.Hp -= dmg
+            else:
+                dmg = 0
+            print(f'Archer_Arrow hit {other.__class__.__name__} dmg={dmg} target_hp={getattr(other, "Hp", "?")}')
+            if getattr(other, 'Hp', 1) <= 0:
                 try:
-                    game_world.remove_object(self)
+                    game_world.remove_object(other)
                 except Exception:
                     pass
                 try:
-                    game_world.remove_collision_object(self)
+                    game_world.remove_collision_object(other)
                 except Exception:
                     pass
-            except Exception:
-                pass
+                # owner가 타겟으로 잡고 있으면 해제하고 SEPARATE 이벤트 발생 (owner가 월드에 있을 때만)
+                try:
+                    if self.owner is not None and getattr(self.owner, 'target', None) is other:
+                        self.owner.target = None
+                        if any(self.owner in layer for layer in game_world.world):
+                            try:
+                                self.owner.state_machine.handle_state_event(('SEPARATE', None))
+                            except Exception:
+                                pass
+                except Exception:
+                    pass
+            self._safe_remove()
+        except Exception as e:
+            print(f'Archer_Arrow.handle_collision error: {e}')
+            self._safe_remove()

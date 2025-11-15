@@ -88,27 +88,29 @@ def handle_collisions():
         left = left.strip().upper()
         right = right.strip().upper()
 
-        # 범위 판정을 사용할 공격자 그룹 목록 (필요시 확장)
         RANGE_ATTACKERS = {'KNIGHT', 'ARCHER'}
 
         use_range = ((left in RANGE_ATTACKERS and right == 'MONSTER') or
                      (right in RANGE_ATTACKERS and left == 'MONSTER'))
 
-        for a in pairs[0]:
-            for b in pairs[1]:
+        # 순회 도중 리스트가 변경될 수 있으므로 복사본으로 순회
+        for a in pairs[0][:]:
+            # a가 월드에서 이미 제거되었으면 건너뜀
+            if not any(a in layer for layer in world):
+                continue
+            for b in pairs[1][:]:
+                if not any(b in layer for layer in world):
+                    continue
                 try:
                     if use_range:
-                        # 범위 판정과 물리 충돌을 따로 계산
                         in_range_a_b = in_attack_range(a, b)
                         in_range_b_a = in_attack_range(b, a)
                         phys_collide = collide(a, b)
 
                         if phys_collide:
-                            # 실제 충돌이면 양쪽 모두 알림
                             a.handle_collision(group, b)
                             b.handle_collision(group, a)
                         else:
-                            # 범위에만 들어간 경우: 공격자 쪽(왼/오른쪽 중 RANGE_ATTACKER인 쪽)만 알림
                             if left in RANGE_ATTACKERS and in_range_a_b:
                                 a.handle_collision(group, b)
                             if right in RANGE_ATTACKERS and in_range_b_a:
