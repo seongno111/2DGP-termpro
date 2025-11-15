@@ -69,7 +69,6 @@ class Heal:
         if isinstance(e, tuple) and len(e) >= 3:
             self.healer.target = e[2]
         else:
-            # 안전: IDLE에서 이미 설정했을 수도 있음
             self.healer.target = getattr(self.healer, 'target', None)
         print(f'Healer.HEAL.enter target={getattr(self.healer,"target",None)}')
 
@@ -82,12 +81,12 @@ class Heal:
 
         target = getattr(self.healer, 'target', None)
 
-        # 디버그: 타겟 존재/월드/HP/바운드 정보 출력 및 범위 판정 직전 상태 확인
         if target is None:
             print('Healer.HEAL.do: no target -> SEPARATE')
             self.healer.state_machine.handle_state_event(('SEPARATE', None))
             return
 
+        # (중략) 유효성/범위 체크는 기존과 동일하게 처리...
         try:
             in_world = any(target in layer for layer in game_world.world)
         except Exception:
@@ -98,29 +97,13 @@ class Heal:
             self.healer.state_machine.handle_state_event(('SEPARATE', None))
             return
 
-        # 바운드와 BB 수집 (for debug)
-        try:
-            atk_bounds = self.healer.get_at_bound()
-        except Exception as ex:
-            print(f'Healer.HEAL.do: get_at_bound exception: {ex}')
-            atk_bounds = None
-        try:
-            tgt_bb = target.get_bb()
-        except Exception as ex:
-            print(f'Healer.HEAL.do: target.get_bb exception: {ex}')
-            tgt_bb = None
-
-        # 범위 판정 및 상세 로그
         try:
             in_range = game_world.in_attack_range(self.healer, target)
         except Exception as ex:
             in_range = False
             print(f'Healer.HEAL.do: in_attack_range raised {ex}')
 
-        print(f'Healer.HEAL.do: target={target.__class__.__name__} Hp={getattr(target,"Hp","?")}/{getattr(target,"max_hp","?")} bounds={atk_bounds} bb={tgt_bb} in_range={in_range}')
-
         if not in_range:
-            # 이유 로그 후 SEPARATE
             print('Healer.HEAL.do: not in range -> SEPARATE')
             self.healer.state_machine.handle_state_event(('SEPARATE', None))
             return
@@ -130,16 +113,44 @@ class Heal:
             self.healer.state_machine.handle_state_event(('SEPARATE', None))
             return
 
-        # 힐 처리
+        # 힐 처리 및 이펙트 생성
         self.heal_timer += game_framework.frame_time
         if self.heal_timer >= HEAL_INTERVAL:
             self.heal_timer -= HEAL_INTERVAL
             heal_amount = getattr(self.healer, 'Atk', 100)
             target.Hp = min(target.max_hp, target.Hp + heal_amount)
             print(f'Healer healed {target.__class__.__name__} +{heal_amount} hp -> {getattr(target, "Hp", "?")}')
-            if getattr(target, 'Hp', 0) >= getattr(target, 'max_hp', 0):
-                self.healer.target = None
-                self.healer.state_machine.handle_state_event(('SEPARATE', None))
+
+            # 이펙트 생성: at_image를 사용, 대상에 _overlay로 참조 저장
+            try:
+                # 안전하게 속성 가져오기
+                healer_obj = getattr(self, 'healer', None)
+                # 힐러가 overlay_depth를 제공하면 사용, 아니면 기본 6층 사용
+                depth_for_effect = 6
+                if healer_obj is not None:
+                    depth_for_effect = getattr(healer_obj, 'overlay_depth', depth_for_effect)
+                # 유효한 depth인지 검사 (game_world.world 길이 기준)
+                try:
+                    max_depth = len(game_world.world)
+                except Exception:
+                    max_depth = 8
+                if not isinstance(depth_for_effect, int) or not (0 <= depth_for_effect < max_depth):
+                    depth_for_effect = 6
+
+                effect = HealEffect(target=target, life=0.5, depth=depth_for_effect)
+
+                # 기존 오버레이가 있으면 안전 제거
+                old_overlay = getattr(target, '_overlay', None)
+                if old_overlay is not None:
+                    try:
+                        game_world.remove_object(old_overlay)
+                    except Exception:
+                        pass
+
+                target._overlay = effect
+                game_world.add_object(effect, effect.depth)
+            except Exception:
+                pass
 
     def draw(self):
         x = self.healer.x
@@ -155,11 +166,7 @@ class Healer:
     image = []
     for i in range(7):
         image.append(None)
-
     def __init__(self):
-        from pico2d import load_image
-        from state_machine import StateMachine
-
         self.depth = 1
         self.x, self.y = 0, 0
         self.frame = 0
@@ -250,3 +257,55 @@ class Healer:
             self.target = other
             self.state_machine.handle_state_event(('COLLIDE', group, other))
             return
+
+class HealEffect:
+    image = None
+    def __init__(self, target=None, life=0.5, depth=7):
+        self.target = target
+        if self.image is None:
+            self.image = load_image('hl_at_ef.png')
+        # 초기 위치: 타겟이 있으면 따라붙음
+        if self.target is not None:
+            try:
+                self.x = self.target.x
+                self.y = self.target.y + 50
+            except Exception:
+                self.x, self.y = 0, 0
+        else:
+            self.x, self.y = 0, 0
+        self.life = life
+        self.timer = 0.0
+        self.depth = depth
+        self.removed = False
+
+    def update(self):
+        # 대상이 월드에 있으면 따라다님
+        try:
+            if self.target is not None and any(self.target in layer for layer in game_world.world):
+                self.x = self.target.x
+                self.y = self.target.y + 50
+            else:
+                # 대상이 없으면 바로 제거 준비
+                self.timer = self.life
+        except Exception:
+            self.timer = self.life
+
+        # 수명 검사
+        self.timer += game_framework.frame_time
+        if self.timer >= self.life:
+            # 대상의 _overlay 참조 정리
+            try:
+                if self.target is not None and getattr(self.target, '_overlay', None) is self:
+                    self.target._overlay = None
+            except Exception:
+                pass
+            # 안전 제거
+            if not self.removed:
+                try:
+                    game_world.remove_object(self)
+                except Exception:
+                    pass
+                self.removed = True
+
+    def draw(self):
+        self.image.clip_draw(0, 0, 140, 170, self.x, self.y, 80, 150)
