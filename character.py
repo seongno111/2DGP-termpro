@@ -114,7 +114,7 @@ class Character:
         self.s_p_x = 450
         self.v_p_x = 550
         self.font = load_font('ENCR10B.TTF', 32)
-        self.cost = 20
+        self.cost = 40
         if self.k_p_image is None:
             self.k_p_image = load_image('Knight_portrait.png')
         if self.a_p_image is None:
@@ -212,8 +212,9 @@ class Character:
             if tile_depth != candidate_depth:
                 print("Depth mismatch -> cannot place here")
                 return False
-            placed_key = self.placing_unit
 
+            # 실제 배치키와 유닛 생성
+            placed_key = self.placing_unit
             unit = unit_cls()
             unit.x = col * TILE_W + TILE_W // 2
             unit.y = (get_canvas_height() - ((row + 1) * TILE_H)) + TILE_H // 2
@@ -224,16 +225,23 @@ class Character:
             unit._placed_key = placed_key
             unit._placed_idx = idx
 
+            # 월드에 추가 및 몬스터 충돌그룹 등록
             game_world.add_object(unit, (get_canvas_height() - my) // 100)
             group = f'{unit.__class__.__name__.upper()}:MONSTER'
             game_world.add_collision_pair(group, unit, None)
+
+            # 힐러 그룹 보장 및 대상 등록 (정상 변수 사용)
+            g_heal = f'HEALER:{placed_key.upper()}'
+            if g_heal not in game_world.collision_pairs:
+                game_world.add_collision_pair(g_heal, None, None)  # 그룹 생성
+            if unit not in game_world.collision_pairs[g_heal][1]:
+                game_world.collision_pairs[g_heal][1].append(unit)
 
             overlay = BorderOverlay(unit)
             unit._overlay = overlay
             game_world.add_object(overlay, 7)
 
             # 배치 완료 처리 및 코스트 차감
-            placed_key = self.placing_unit
             unit_cost = self.unit_map[placed_key].get('cost', 0)
             self.unit_placed[placed_key] = True
             self._placed_unit = unit
@@ -242,11 +250,6 @@ class Character:
 
             # 실제로 비용을 차감
             self.cost -= unit_cost
-            if self.cost < 0:
-                self.cost = 0
-
-            print(
-                f"{placed_key} placed at idx={idx}, x={unit.x}, y={unit.y}, cost_paid={unit_cost}, remaining_cost={int(self.cost)}")
             return True
 
         def _motion_update_direction(ev_tuple):

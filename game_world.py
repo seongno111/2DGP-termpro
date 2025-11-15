@@ -26,12 +26,13 @@ def update():
     for layer in world:
         for o in layer:
             o.update()
+    handle_collisions()
 
 def render():
     for layer in world:
         for o in layer:
             o.draw()
-    handle_collisions()
+
 
 
 def clear():
@@ -39,11 +40,6 @@ def clear():
         layer.clear()
 
 def in_attack_range(a, b):
-    """
-    a: 공격자(예: Knight) - must implement get_at_bound()
-    b: 대상(예: Monster) - must implement get_bb()
-    반환: 대상이 공격자의 get_at_bound() 범위에 들어있으면 True
-    """
     try:
         left_a, bottom_a, right_a, top_a = a.get_at_bound()
     except Exception:
@@ -53,11 +49,23 @@ def in_attack_range(a, b):
     except Exception:
         return False
 
-    if left_a > right_b: return False
-    if right_a < left_b: return False
-    if top_a < bottom_b: return False
-    if bottom_a > top_b: return False
-    return True
+    if left_a > right_b:
+        res = False
+    elif right_a < left_b:
+        res = False
+    elif top_a < bottom_b:
+        res = False
+    elif bottom_a > top_b:
+        res = False
+    else:
+        res = True
+
+    # 힐러 관련 디버그 출력만 활성화 (로그 과다 방지)
+    attacker_name = a.__class__.__name__ if hasattr(a, '__class__') else str(type(a))
+    if attacker_name.upper() == 'HEALER' or getattr(a, 'number', None) == 5:
+        print(f'in_attack_range: attacker={attacker_name} bounds=({left_a},{bottom_a},{right_a},{top_a}) target={b.__class__.__name__} bb=({left_b},{bottom_b},{right_b},{top_b}) -> {res}')
+
+    return res
 
 def collide(a, b):
     left_a, bottom_a, right_a, top_a = a.get_bb()
@@ -71,6 +79,7 @@ def collide(a, b):
     return True
 
 collision_pairs = {}
+collision_states = set()
 def add_collision_pair(group, a, b):
     if group not in collision_pairs:
         print(f'Added new group {group}')
@@ -83,6 +92,7 @@ def add_collision_pair(group, a, b):
     return None
 
 def handle_collisions():
+    global collision_states
     for group, pairs in collision_pairs.items():
         left, right = (group.split(':') + ['', ''])[:2]
         left = left.strip().upper()
@@ -93,31 +103,93 @@ def handle_collisions():
         use_range = ((left in RANGE_ATTACKERS and right == 'MONSTER') or
                      (right in RANGE_ATTACKERS and left == 'MONSTER'))
 
-        # 순회 도중 리스트가 변경될 수 있으므로 복사본으로 순회
+        # 안전히 복사본으로 순회
         for a in pairs[0][:]:
-            # a가 월드에서 이미 제거되었으면 건너뜀
             if not any(a in layer for layer in world):
+                # 만약 월드에서 제거된 객체 관련된 상태 제거
+                # (a가 제거됐을 때 남아있는 collision_states 정리)
+                for key in list(collision_states):
+                    if key[0] == id(a):
+                        collision_states.discard(key)
                 continue
             for b in pairs[1][:]:
                 if not any(b in layer for layer in world):
+                    for key in list(collision_states):
+                        if key[1] == id(b):
+                            collision_states.discard(key)
                     continue
                 try:
+                    # 판단값 계산
                     if use_range:
                         in_range_a_b = in_attack_range(a, b)
                         in_range_b_a = in_attack_range(b, a)
                         phys_collide = collide(a, b)
 
+                        # A 쪽 충돌 여부 판정
+                        a_should = False
+                        b_should = False
                         if phys_collide:
-                            a.handle_collision(group, b)
-                            b.handle_collision(group, a)
+                            a_should = True
+                            b_should = True
                         else:
                             if left in RANGE_ATTACKERS and in_range_a_b:
-                                a.handle_collision(group, b)
+                                a_should = True
                             if right in RANGE_ATTACKERS and in_range_b_a:
-                                b.handle_collision(group, a)
-                    else:
-                        if collide(a, b):
+                                b_should = True
+
+                        key_a = (id(a), id(b), group, 'a')
+                        key_b = (id(a), id(b), group, 'b')
+
+                        # 시작: 아직 상태에 없으면 한 번만 호출
+                        if a_should and key_a not in collision_states:
                             a.handle_collision(group, b)
+                            collision_states.add(key_a)
+                        # 종료: 상태에 있는데 더 이상 조건이 아니면 SEPARATE 발생
+                        if not a_should and key_a in collision_states:
+                            try:
+                                a.state_machine.handle_state_event(('SEPARATE', None))
+                            except Exception:
+                                pass
+                            collision_states.discard(key_a)
+
+                        if b_should and key_b not in collision_states:
                             b.handle_collision(group, a)
+                            collision_states.add(key_b)
+                        if not b_should and key_b in collision_states:
+                            try:
+                                b.state_machine.handle_state_event(('SEPARATE', None))
+                            except Exception:
+                                pass
+                            collision_states.discard(key_b)
+
+                    else:
+                        phys_collide = collide(a, b)
+                        key_a = (id(a), id(b), group, 'a')
+                        key_b = (id(a), id(b), group, 'b')
+
+                        if phys_collide:
+                            # 시작이면 한 번만 호출
+                            if key_a not in collision_states:
+                                a.handle_collision(group, b)
+                                collision_states.add(key_a)
+                            if key_b not in collision_states:
+                                b.handle_collision(group, a)
+                                collision_states.add(key_b)
+                        else:
+                            # 종료 시 SEPARATE 한 번만 호출
+                            if key_a in collision_states:
+                                try:
+                                    a.state_machine.handle_state_event(('SEPARATE', None))
+                                except Exception:
+                                    pass
+                                collision_states.discard(key_a)
+                            if key_b in collision_states:
+                                try:
+                                    b.state_machine.handle_state_event(('SEPARATE', None))
+                                except Exception:
+                                    pass
+                                collision_states.discard(key_b)
+
                 except Exception:
+                    # 안전하게 무시하되 상태 정리 필요 시 정리
                     pass
