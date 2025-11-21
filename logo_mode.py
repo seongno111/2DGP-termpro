@@ -1,0 +1,34 @@
+import game_framework
+from pico2d import *
+import play_mode
+
+image = None
+running = True
+logo_start_time = 0.0
+
+def init():
+    global image
+    global running
+    global logo_start_time
+    image = load_image('back.png')
+    running = True
+    logo_start_time = get_time()
+
+def finish():
+    global image
+    del image
+
+def update():
+    global logo_start_time
+    if get_time() - logo_start_time >= 2.0:
+        logo_start_time = get_time()
+        game_framework.change_mode(play_mode)
+
+def draw():
+    clear_canvas()
+    image.clip_draw(0, 0, 87,82, 500,400, 1000,800)
+    update_canvas()
+
+def handle_events():
+    # 현재 이벤트들을 소비
+    events = get_events()
