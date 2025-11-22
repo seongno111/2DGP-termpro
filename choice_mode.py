@@ -72,9 +72,10 @@ def handle_events():
         elif event.type == SDL_KEYDOWN and event.key == SDLK_ESCAPE:
             running = False
         elif event.type == SDL_MOUSEBUTTONDOWN and event.button == SDL_BUTTON_LEFT:
+            play_mode.start_party = party
             mx, my = _get_mouse_pos_from_event(event)
             # 클릭 영역: (800,0) ~ (920,120)
-            if 800 <= mx <= 920 and 0 <= my <= 120:
+            if 800 <= mx <= 920 and 0 <= my <= 120 and now_people == 4:
                 game_framework.change_mode(play_mode)
             elif 0<= mx <=320 and 470 <= my <=800:
                check_party(now_people, 1)

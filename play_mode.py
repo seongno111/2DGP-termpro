@@ -11,6 +11,8 @@ from monster import Monster
 
 character = None
 
+start_party = None
+
 stage_temp = [2, 2, 2, 2, 2, 2, 2, 2,2,2
              ,2, 2, 2, 2, 2, 2, 2, 2,2,2
              ,2, 2, 2, 2, 2, 2, 2, 2,2,2
@@ -39,7 +41,7 @@ def handle_events():
 
 
 def init():
-    global _spawn_positions, _spawn_index, _last_spawn_time, character
+    global _spawn_positions, _spawn_index, _last_spawn_time, character, start_party
     tile = []
 
     for i in range(len(stage_temp)):
@@ -53,7 +55,10 @@ def init():
             tile.append(Tile(i, stage_temp[i]-1))
             game_world.add_object(tile[i], i//10)
 
-    character = Character()
+    # start_party를 Character에 전달하여 사용할 유닛을 제한
+    character = Character(start_party)
+    # 초기화 후 소비(다음 전환에 영향 주지 않도록)
+    start_party = None
     game_world.add_object(character, 7)
 
     _spawn_positions = [i for i, v in enumerate(stage_temp) if v == 3]

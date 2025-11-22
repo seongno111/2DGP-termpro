@@ -1,4 +1,3 @@
-# python
 from pico2d import *
 from sdl2 import SDL_BUTTON_LEFT, SDL_MOUSEBUTTONDOWN, SDL_MOUSEBUTTONUP, SDL_MOUSEMOTION, SDL_GetMouseState
 from ctypes import c_int
@@ -46,10 +45,6 @@ def _get_mouse_pos(ev):
     return mx, my
 
 class BorderOverlay:
-    """
-    유닛의 get_at_bound() 를 이용해 경계 사각형만 그리는 오버레이.
-    이 객체를 항상 최상위 레이어에 추가하면 타일보다 위에 그려짐.
-    """
     def __init__(self, unit):
         self.unit = unit
     def draw(self):
@@ -74,7 +69,6 @@ class Place:
     def __init__(self, character):
         self.character = character
     def enter(self, e):
-        # 진입시 디버그
         print("ENTER PLACING")
     def exit(self, e):
         pass
@@ -105,16 +99,22 @@ class Character:
     ch_num = 0
     placing = False
 
-    def __init__(self):
+    # 숫자->키 매핑
+    NUM_TO_KEY = {
+        1: 'knight',
+        2: 'archer',
+        3: 'hptank',
+        4: 'dptank',
+        5: 'healer',
+        6: 'vanguard'
+    }
+
+    def __init__(self, allowed_numbers=None):
         self.p_y = 50
-        self.k_p_x = 50
-        self.a_p_x = 150
-        self.h_p_x = 250
-        self.d_p_x = 350
-        self.s_p_x = 450
-        self.v_p_x = 550
         self.font = load_font('ENCR10B.TTF', 32)
         self.cost = 40
+
+        # portraits 로드(한번만)
         if self.k_p_image is None:
             self.k_p_image = load_image('Knight_portrait.png')
         if self.a_p_image is None:
@@ -128,16 +128,38 @@ class Character:
         if self.v_p_image is None:
             self.v_p_image = load_image('Vanguard_portrait.png')
 
-        self.occupied_tiles = set()
+        # 기본 순서
+        full_keys_order = ['knight','archer','hptank','dptank','healer','vanguard']
 
-        self.unit_map = OrderedDict([
-            ('knight', {'x': self.k_p_x, 'image': self.k_p_image, 'class': Knight, 'cost': 19}),
-            ('archer', {'x': self.a_p_x, 'image': self.a_p_image, 'class': Archer, 'cost': 14}),
-            ('hptank', {'x': self.h_p_x, 'image': self.h_p_image, 'class': Hptank, 'cost': 22}),
-            ('dptank', {'x': self.d_p_x, 'image': self.d_p_image, 'class': Dptank, 'cost': 22}),
-            ('healer', {'x': self.s_p_x, 'image': self.s_p_image, 'class': Healer, 'cost': 14}),
-            ('vanguard', {'x': self.v_p_x, 'image': self.v_p_image, 'class': Vanguard, 'cost': 12}),
-        ])
+        # allowed_numbers가 주어지면 숫자->키로 변환, 없으면 전체 허용
+        if allowed_numbers:
+            selected_keys = []
+            for n in allowed_numbers:
+                k = self.NUM_TO_KEY.get(n)
+                if k and k not in selected_keys:
+                    selected_keys.append(k)
+            if not selected_keys:
+                selected_keys = full_keys_order
+        else:
+            selected_keys = full_keys_order
+
+        # 사용할 유닛 클래스/이미지/비용 매핑
+        class_map = {
+            'knight': (Knight, self.k_p_image, 19),
+            'archer': (Archer, self.a_p_image, 14),
+            'hptank': (Hptank, self.h_p_image, 22),
+            'dptank': (Dptank, self.d_p_image, 22),
+            'healer': (Healer, self.s_p_image, 14),
+            'vanguard': (Vanguard, self.v_p_image, 12),
+        }
+
+        # portrait x 재배치 (선택된 순서대로)
+        base_positions = [50, 150, 250, 350, 450, 550]
+        self.unit_map = OrderedDict()
+        for i, key in enumerate(selected_keys):
+            cls, img, cost = class_map[key]
+            x = base_positions[i] if i < len(base_positions) else base_positions[-1] + 100*(i-len(base_positions)+1)
+            self.unit_map[key] = {'x': x, 'image': img, 'class': cls, 'cost': cost}
 
         self.placing_unit = None
         self._placed_unit = None
@@ -164,7 +186,6 @@ class Character:
                     unit_cost = info.get('cost', 0)
                     if self.cost < unit_cost:
                         print(f"Not enough cost to place {key}: need={unit_cost}, have={int(self.cost)}")
-                        # 여기에서 부족 피드백(사운드/효과)을 호출하면 됨
                         return False
                     print(f"Portrait clicked: setting placing_unit={key} (cost={unit_cost})")
                     self.placing_unit = key
@@ -213,7 +234,6 @@ class Character:
                 print("Depth mismatch -> cannot place here")
                 return False
 
-            # 실제 배치키와 유닛 생성
             placed_key = self.placing_unit
             unit = unit_cls()
             unit.x = col * TILE_W + TILE_W // 2
@@ -221,19 +241,16 @@ class Character:
             unit.tile_center_x = unit.x
             unit.tile_center_y = unit.y
 
-            # 배치 정보를 유닛에 저장 (나중에 죽었을 때 character를 갱신하기 위함)
             unit._placed_key = placed_key
             unit._placed_idx = idx
 
-            # 월드에 추가 및 몬스터 충돌그룹 등록
             game_world.add_object(unit, (get_canvas_height() - my) // 100)
             group = f'{unit.__class__.__name__.upper()}:MONSTER'
             game_world.add_collision_pair(group, unit, None)
 
-            # 힐러 그룹 보장 및 대상 등록 (정상 변수 사용)
             g_heal = f'HEALER:{placed_key.upper()}'
             if g_heal not in game_world.collision_pairs:
-                game_world.add_collision_pair(g_heal, None, None)  # 그룹 생성
+                game_world.add_collision_pair(g_heal, None, None)
             if unit not in game_world.collision_pairs[g_heal][1]:
                 game_world.collision_pairs[g_heal][1].append(unit)
 
@@ -241,14 +258,12 @@ class Character:
             unit._overlay = overlay
             game_world.add_object(overlay, 7)
 
-            # 배치 완료 처리 및 코스트 차감
             unit_cost = self.unit_map[placed_key].get('cost', 0)
             self.unit_placed[placed_key] = True
             self._placed_unit = unit
             self.placing_unit = None
             self.occupied_tiles.add(idx)
 
-            # 실제로 비용을 차감
             self.cost -= unit_cost
             return True
 
@@ -262,13 +277,11 @@ class Character:
                 return False
             dx = mx - self._placed_unit.x
             dy = my - self._placed_unit.y
-            threshold = 5  # 작은 떨림 무시
+            threshold = 5
 
             if abs(dy) > abs(dx) and abs(dy) > threshold:
-                # 수직 이동이 더 크면 위(2) 또는 아래(3)
                 self._placed_unit.face_dir = 2 if dy > 0 else 3
             else:
-                # 수평 기준: 오른쪽(0) 또는 왼쪽(1)
                 self._placed_unit.face_dir = 0 if dx >= 0 else 1
             return True
 
@@ -299,28 +312,32 @@ class Character:
             }
         )
 
+        # occupied_tiles는 외부에서 참조되므로 초기화
+        self.occupied_tiles = set()
+
     def check(self):
         x = c_int()
         y = c_int()
         SDL_GetMouseState(x, y)
         mx, my = x.value, get_canvas_height() - y.value
-        if self.k_p_x - 50 <= mx <= self.k_p_x + 50 and self.p_y - 50 <= my <= self.p_y + 50:
-            print('Character clicked!')
-            self.ch_num += 1
-            print(f'Character number is now: {self.ch_num}')
-            self.placing = True
+        for key, info in self.unit_map.items():
+            x_pos = info['x']
+            if x_pos - 50 <= mx <= x_pos + 50 and self.p_y - 50 <= my <= self.p_y + 50:
+                print('Character portrait clicked:', key)
+                self.ch_num += 1
+                print(f'Character number is now: {self.ch_num}')
+                self.placing = True
 
     def update(self):
         self.cost = (self.cost + game_framework.frame_time)
         pass
 
     def draw(self):
-        self.k_p_image.clip_draw(0, 0, 1022, 1022, self.k_p_x, self.p_y, 100, 100)
-        self.a_p_image.clip_draw(0, 0, 1022, 1022, self.a_p_x, self.p_y, 100, 100)
-        self.h_p_image.clip_draw(0, 0, 1022, 1022, self.h_p_x, self.p_y, 100, 100)
-        self.d_p_image.clip_draw(0, 0, 1022, 1022, self.d_p_x, self.p_y, 100, 100)
-        self.s_p_image.clip_draw(0, 0, 1022, 1022, self.s_p_x, self.p_y, 100, 100)
-        self.v_p_image.clip_draw(0, 0, 1022, 1022, self.v_p_x, self.p_y, 100, 100)
+        # 동적으로 등록된 유닛들만 그림
+        for key, info in self.unit_map.items():
+            img = info['image']
+            x = info['x']
+            img.clip_draw(0, 0, 1022, 1022, x, self.p_y, 100, 100)
         self.font.draw(0,110, f'{int(self.cost):02d}', (255, 255, 0))
         for key, info in self.unit_map.items():
             if self.unit_placed.get(key, False):
