@@ -1,4 +1,3 @@
-# python
 import game_framework
 from pico2d import *
 import play_mode
@@ -27,19 +26,25 @@ def update():
     pass
 
 def draw():
+    global party
     clear_canvas()
     image.clip_draw(0, 0, 4380,3504, 500,400, 1000,800)
-    draw_rectangle(0,130,320,800)
-    draw_rectangle(0, 470, 320, 800)
 
-    draw_rectangle(320, 130, 700, 800)
-    draw_rectangle(320, 470, 700, 800)
+    # party에 들어있는 숫자만 태두리(강조) 표시
+    selected = set(party)
+    if check_rec(1):
+        draw_rectangle(0, 470, 320, 800)
+    if check_rec(6):
+        draw_rectangle(0, 130, 320, 470)
+    if check_rec(2):
+        draw_rectangle(320, 470, 700, 800)
+    if check_rec(4):
+        draw_rectangle(320, 130, 700, 470)
+    if check_rec(3):
+        draw_rectangle(700, 470, 1000, 800)
+    if check_rec(5):
+        draw_rectangle(700, 130, 1000, 470)
 
-    draw_rectangle(700, 130, 1000, 800)
-    draw_rectangle(700, 470, 1000, 800)
-
-    draw_rectangle(800, 0, 920, 120)
-    draw_rectangle(100, 0, 220, 120)
     update_canvas()
 
 def _get_mouse_pos_from_event(ev):
@@ -103,3 +108,9 @@ def check_party(m, num):
             party[i] = num
             now_people += 1
             return
+
+def check_rec(num):
+    for i in range(4):
+        if party[i] == num:
+            return True
+    return False
