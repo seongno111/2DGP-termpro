@@ -164,7 +164,7 @@ class Knight:
             self.font.draw(self.x-50+i*10, self.y+80, f'/', (100, 250, 100))
 
     def get_bb(self):
-        return self.x - 50, self.y - 50, self.x + 50, self.y + 50
+        return self.x - 50, self.y - 40, self.x + 50, self.y + 40
 
     def update(self):
         self.state_machine.update()

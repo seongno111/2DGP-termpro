@@ -152,7 +152,7 @@ class Dptank:
         self.state_machine.update()
 
     def get_bb(self):
-        return self.x - 50, self.y - 50, self.x + 50, self.y + 50
+        return self.x - 50, self.y - 40, self.x + 50, self.y + 40
 
     def handle_collision(self, group, other):
         left, right = (group.split(':') + ['', ''])[:2]

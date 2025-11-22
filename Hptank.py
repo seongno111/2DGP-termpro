@@ -170,7 +170,7 @@ class Hptank:
             self.font.draw(self.x - 50 + i * 10, self.y + 80, f'/', (100, 250, 100))
 
     def get_bb(self):
-        return self.x - 50, self.y - 50, self.x + 50, self.y + 50
+        return self.x - 50, self.y - 40, self.x + 50, self.y + 40
 
     def handle_collision(self, group, other):
         # 제거되었거나 Hp <= 0이면 무시
