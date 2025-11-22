@@ -8,6 +8,8 @@ from ctypes import c_int
 image = None
 running = True
 logo_start_time = 0.0
+party = [0,0,0,0]
+now_people = 0
 
 def init():
     global image
@@ -62,7 +64,7 @@ def _get_mouse_pos_from_event(ev):
     return mx, my
 
 def handle_events():
-    global running
+    global running, now_people, party
     events = get_events()
     for event in events:
         if event.type == SDL_QUIT:
@@ -74,3 +76,29 @@ def handle_events():
             # 클릭 영역: (800,0) ~ (920,120)
             if 800 <= mx <= 920 and 0 <= my <= 120:
                 game_framework.change_mode(play_mode)
+            elif 0<= mx <=320 and 470 <= my <=800:
+               check_party(now_people, 1)
+            elif 0<= mx <=320 and 130 <= my <=470:
+               check_party(now_people, 6)
+            elif 320<= mx <=700 and 470 <= my <=800:
+                check_party(now_people, 2)
+            elif 320<= mx <=700 and 130 <= my <=470:
+                check_party(now_people, 4)
+            elif 700<= mx <=1000 and 470 <= my <=800:
+                check_party(now_people, 3)
+            elif 700<= mx <=1000 and 130 <= my <=800:
+                check_party(now_people, 5)
+            print(f'now_people: {now_people}, party: {party}')
+
+def check_party(m, num):
+    global now_people
+    for i in range(4):
+        if party[i] == num:
+            party[i]=0
+            now_people -= 1
+            return
+    for i in range(4):
+        if party[i] == 0 and now_people <4:
+            party[i] = num
+            now_people += 1
+            return

@@ -1,6 +1,9 @@
 import game_framework
 from pico2d import *
+import choice_mode
 import play_mode
+from sdl2 import SDL_MOUSEBUTTONDOWN, SDL_BUTTON_LEFT, SDL_QUIT, SDL_GetMouseState
+from ctypes import c_int
 
 image = None
 running = True
@@ -19,8 +22,7 @@ def finish():
     del image
 
 def update():
-
-   pass
+    pass
 
 def draw():
     clear_canvas()
@@ -30,6 +32,36 @@ def draw():
     draw_rectangle(400, 600, 500, 700)
     update_canvas()
 
+def _get_mouse_pos_from_event(ev):
+    if ev is None:
+        return 0, 0
+    if hasattr(ev, 'button') and getattr(ev.button, 'x', None) is not None and getattr(ev.button, 'y', None) is not None:
+        mx = int(ev.button.x); my_raw = int(ev.button.y)
+    elif getattr(ev, 'x', None) is not None and getattr(ev, 'y', None) is not None:
+        mx = int(getattr(ev, 'x')); my_raw = int(getattr(ev, 'y'))
+    else:
+        x = c_int(); y = c_int()
+        try:
+            SDL_GetMouseState(x, y)
+            mx, my_raw = x.value, y.value
+        except Exception:
+            return 0, 0
+    try:
+        my = get_canvas_height() - my_raw
+    except Exception:
+        my = my_raw
+    return mx, my
+
 def handle_events():
-    # 현재 이벤트들을 소비
+    global running
     events = get_events()
+    for event in events:
+        if event.type == SDL_QUIT:
+            running = False
+        elif event.type == SDL_KEYDOWN and event.key == SDLK_ESCAPE:
+            running = False
+        elif event.type == SDL_MOUSEBUTTONDOWN and event.button == SDL_BUTTON_LEFT:
+            mx, my = _get_mouse_pos_from_event(event)
+            # 클릭 영역: x 500~600, y 100~200
+            if 500 <= mx <= 600 and 100 <= my <= 200:
+                game_framework.change_mode(choice_mode)
