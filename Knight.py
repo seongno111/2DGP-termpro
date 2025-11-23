@@ -40,7 +40,6 @@ class Attack:
         if isinstance(e, tuple) and len(e) >= 3:
             # event 형태: ('COLLIDE', group, other)
             self.knight.target = e[2]
-        # else target might already be set in handle_collision
     def exit(self, e):
         self.knight.frame = 0
         self.attack_timer = 0.0
@@ -49,7 +48,7 @@ class Attack:
         self.knight.frame = (self.knight.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 5
         target = getattr(self.knight, 'target', None)
         # 충돌이 끊기거나 타겟이 없으면 SEPARATE 이벤트 발생
-        # 기존 game_world.collide 대신 game_world.in_attack_range 사용
+        # game_world.in_attack_range 대신 game_world.collide로 일관된 판정 사용
         if target is None or not game_world.in_attack_range(self.knight, target):
             self.knight.state_machine.handle_state_event(('SEPARATE', None))
             return
@@ -63,9 +62,8 @@ class Attack:
             print(f'Knight attacked Monster dmg={dmg} target_hp={getattr(target, "Hp", "?")}')
             if getattr(target, 'Hp', 1) <= 0:
                 print(f'{target.__class__.__name__} died by Knight.')
-                # 몬스터 제거 및 충돌 제거
+                # 몬스터 쪽 die()가 제거/카운트 처리를 담당하므로 우선 호출
                 try:
-                    game_world.remove_object(target)
                     target.die()
                 except Exception:
                     pass

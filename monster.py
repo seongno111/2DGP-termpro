@@ -213,16 +213,5 @@ class Monster:
     def handle_event(self, event):
         self.state_machine.handle_state_event(('INPUT', event))
     def handle_collision(self, group, other):
-        left, right = (group.split(':') + ['', ''])[:2]
-        left = left.strip().upper()
-        right = right.strip().upper()
-
-        # KNIGHT와 MONSTER 간 충돌인 경우에만 특별 처리 (양방향 허용)
-        if (left == 'KNIGHT' and right == 'MONSTER') or (left == 'MONSTER' and right == 'KNIGHT'):
-            self.target = other
-            self.state_machine.handle_state_event(('COLLIDE', group, other))
-            return
-
-        # 기본 폴백 (다른 그룹이 추가될 경우 대응)
         self.target = other
         self.state_machine.handle_state_event(('COLLIDE', group, other))

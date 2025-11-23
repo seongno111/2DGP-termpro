@@ -98,7 +98,7 @@ def handle_collisions():
         left = left.strip().upper()
         right = right.strip().upper()
 
-        RANGE_ATTACKERS = {'KNIGHT', 'ARCHER'}
+        RANGE_ATTACKERS = {'KNIGHT', 'ARCHER', 'VANGUARD'}
 
         use_range = ((left in RANGE_ATTACKERS and right == 'MONSTER') or
                      (right in RANGE_ATTACKERS and left == 'MONSTER'))

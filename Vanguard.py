@@ -38,25 +38,32 @@ class Attack:
         self.vanguard.frame = 0
         self.attack_timer = 0.0
         if isinstance(e, tuple) and len(e) >= 3:
+            # event 형태: ('COLLIDE', group, other)
             self.vanguard.target = e[2]
+        # else target might already be set in handle_collision
     def exit(self, e):
         self.vanguard.frame = 0
         self.attack_timer = 0.0
     def do(self):
+        # 애니 프레임 업데이트
         self.vanguard.frame = (self.vanguard.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 5
         target = getattr(self.vanguard, 'target', None)
+        # 충돌이 끊기거나 타겟이 없으면 SEPARATE 이벤트 발생
+        # 기존 game_world.collide 대신 game_world.in_attack_range 사용
         if target is None or not game_world.in_attack_range(self.vanguard, target):
             self.vanguard.state_machine.handle_state_event(('SEPARATE', None))
             return
+        # 공격 간격
         ATTACK_INTERVAL = 0.8
         self.attack_timer += game_framework.frame_time
         if self.attack_timer >= ATTACK_INTERVAL:
             self.attack_timer -= ATTACK_INTERVAL
             dmg = max(0, self.vanguard.Atk - getattr(target, 'Def', 0))
             target.Hp -= dmg
-            print(f'Vanguard attacked {target.__class__.__name__} dmg={dmg} target_hp={getattr(target, "Hp", "?")}')
+            print(f'Knight attacked Monster dmg={dmg} target_hp={getattr(target, "Hp", "?")}')
             if getattr(target, 'Hp', 1) <= 0:
-                print(f'{target.__class__.__name__} died by Vanguard.')
+                print(f'{target.__class__.__name__} died by Knight.')
+                # 몬스터 제거 및 충돌 제거
                 try:
                     game_world.remove_object(target)
                     target.die()
@@ -66,22 +73,24 @@ class Attack:
                     game_world.remove_collision_object(target)
                 except Exception:
                     pass
+                # 타겟 비우고 상태 복귀
                 self.vanguard.target = None
                 self.vanguard.state_machine.handle_state_event(('SEPARATE', None))
+
     def draw(self):
         x = self.vanguard.x
         y = self.vanguard.y + 50
         if getattr(self.vanguard, 'face_dir', 0) == 0 or getattr(self.vanguard, 'face_dir', 0) == 2:
-            self.vanguard.image[int(self.vanguard.frame)+1].clip_draw(0, 0, 100, 100, x, y, 150, 160)
+            self.vanguard.image[int(self.vanguard.frame) + 1].clip_draw(0, 0, 100, 100, x, y, 150, 160)
             # optional attack effect draw if image_at exists
             if hasattr(self.vanguard, 'image_at') and self.vanguard.frame >= 3 and len(self.vanguard.image_at) > 0:
-                idx = min(len(self.vanguard.image_at)-1, int(self.vanguard.frame)-3)
-                self.vanguard.image_at[idx].clip_draw(0, 0, 124, 117, x + 50, y-20, 100, 160)
+                idx = min(len(self.vanguard.image_at) - 1, int(self.vanguard.frame) - 3)
+                self.vanguard.image_at[idx].clip_draw(0, 0, 124, 117, x + 50, y - 20, 100, 160)
         else:
-            self.vanguard.image[int(self.vanguard.frame)+1].clip_composite_draw(0, 0, 100, 100, 0, 'h', x, y, 150, 160)
+            self.vanguard.image[int(self.vanguard.frame) + 1].clip_composite_draw(0, 0, 100, 100, 0, 'h', x, y, 150, 160)
             if hasattr(self.vanguard, 'image_at') and self.vanguard.frame >= 3 and len(self.vanguard.image_at) > 0:
-                idx = min(len(self.vanguard.image_at)-1, int(self.vanguard.frame)-3)
-                self.vanguard.image_at[idx].clip_composite_draw(0, 0, 124, 117, 0, 'h', x-50, y-20, 150, 160)
+                idx = min(len(self.vanguard.image_at) - 1, int(self.vanguard.frame) - 3)
+                self.vanguard.image_at[idx].clip_composite_draw(0, 0, 124, 117, 0, 'h', x - 50, y - 20, 150, 160)
 
 class Vanguard:
     image = []
@@ -182,9 +191,9 @@ class Vanguard:
         left = left.strip().upper()
         right = right.strip().upper()
 
-        # VANGUARD와 MONSTER 간 충돌인 경우에만 특별 처리 (양방향 허용)
-        if (left == 'VANGUARD' and right == 'MONSTER') or (left == 'MONSTER' and right == 'VANGUARD') \
-           or (left == 'VANGAURD' and right == 'MONSTER') or (left == 'MONSTER' and right == 'VANGAURD'):
+        # KNIGHT와 MONSTER 간 충돌인 경우에만 특별 처리 (양방향 허용)
+        if (left == 'VANGUARD' and right == 'MONSTER') or (left == 'MONSTER' and right == 'VANGUARD'):
+            # game_world.handle_collisions에서 범위 판정으로 여기까지 왔으므로 바로 타겟 설정
             self.target = other
             self.state_machine.handle_state_event(('COLLIDE', group, other))
             return
@@ -192,6 +201,3 @@ class Vanguard:
         # 기본 폴백
         self.target = other
         self.state_machine.handle_state_event(('COLLIDE', group, other))
-
-    def handle_event(self, event):
-        self.state_machine.handle_state_event(('INPUT', event))
