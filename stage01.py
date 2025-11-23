@@ -189,6 +189,21 @@ def update():
     global _last_spawn_time, _spawn_index
     global _result_shown, _result_start_time, _result_type, killed_monster
     now = time.time()
+
+    # 결과 표시 중이면 스테이지 진행을 멈추고 시간만 체크
+    if _result_shown:
+        # 시작 시간이 미설정이면 지금으로 설정
+        if _result_start_time == 0.0:
+            _result_start_time = now
+        # 지정 시간 경과 시 메인으로 전환 (스테이지는 멈춘 상태 유지)
+        if now - _result_start_time >= RESULT_DURATION:
+            # 결과 초기화 및 씬 전환
+            _result_shown = False
+            _result_start_time = 0.0
+            _result_type = None
+            game_framework.change_mode(main_mode)
+        return
+
     spwan_monster()
 
     # 패배(몬스터가 타일 4에 들어감) 우선 검사
@@ -202,15 +217,6 @@ def update():
 
     game_world.update()
 
-    # 결과가 표시중이면 3초 경과 후 메인으로 복귀
-    if _result_shown and (_result_start_time > 0):
-        if time.time() - _result_start_time >= RESULT_DURATION:
-            # 결과 초기화
-            _result_shown = False
-            _result_start_time = 0.0
-            # 씬 전환
-            game_framework.change_mode(main_mode)
-
 def draw():
     clear_canvas()
 
@@ -221,9 +227,9 @@ def draw():
         cx = get_canvas_width() // 2
         cy = get_canvas_height() // 2
         if _result_type == 'v' and v_image:
-            v_image.clip_draw(0, 0, 87, 81, cx, cy, 87, 81)
+            v_image.clip_draw(0, 0, 87, 81, cx, cy, 400, 400)
         elif _result_type == 'd' and d_image:
-            d_image.clip_draw(0, 0, 87, 81, cx, cy, 87, 81)
+            d_image.clip_draw(0, 0, 87, 81, cx, cy, 400, 400)
 
     update_canvas()
 
