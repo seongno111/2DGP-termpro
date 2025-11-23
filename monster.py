@@ -131,7 +131,7 @@ class Monster:
         tile_cy = canvas_h - (row * th + th // 2)
         self.dead = False
         self.x, self.y = tile_cx, tile_cy
-        self.Hp = 100
+        self.Hp = 300
         self.Def = 5
         self.Atk = 50
         self.frame = 0
@@ -213,5 +213,33 @@ class Monster:
     def handle_event(self, event):
         self.state_machine.handle_state_event(('INPUT', event))
     def handle_collision(self, group, other):
+        # 다른 객체가 없으면 무시
+        if other is None:
+            return
+
+        # Knight와 충돌하는 경우: Knight의 now_stop/stop 검사
+        try:
+            other_cls = other.__class__.__name__ if hasattr(other, '__class__') else ''
+            if other_cls == 'Knight':
+                now_stop = getattr(other, 'now_stop', None)
+                stop = getattr(other, 'stop', None)
+                if now_stop is not None and stop is not None:
+                    # 용량 초과면 통과(충돌 무시)
+                    if now_stop >= stop:
+                        print(f'[MONSTER_COLLIDE] passing Knight (now_stop={now_stop}, stop={stop})')
+                        return
+                    # 제한 미달이면 카운트 증가 후 충돌 처리
+                    try:
+                        other.now_stop += 1
+                        print(f'[MONSTER_COLLIDE] incremented Knight.now_stop -> {other.now_stop}')
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
+        # 기본 충돌 처리: 타겟 설정 및 상태 이벤트 전달
         self.target = other
-        self.state_machine.handle_state_event(('COLLIDE', group, other))
+        try:
+            self.state_machine.handle_state_event(('COLLIDE', group, other))
+        except Exception:
+            pass
