@@ -260,6 +260,7 @@ class Archer_Arrow:
             if getattr(other, 'Hp', 1) <= 0:
                 try:
                     game_world.remove_object(other)
+                    other.die()
                 except Exception:
                     pass
                 try:

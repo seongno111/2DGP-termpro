@@ -66,6 +66,7 @@ class Attack:
                 # 몬스터 제거 및 충돌 제거
                 try:
                     game_world.remove_object(target)
+                    target.die()
                 except Exception:
                     pass
                 try:

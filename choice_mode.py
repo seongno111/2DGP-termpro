@@ -1,6 +1,6 @@
 import game_framework
 from pico2d import *
-import play_mode
+import stage01
 from sdl2 import SDL_MOUSEBUTTONDOWN, SDL_BUTTON_LEFT, SDL_QUIT, SDL_GetMouseState
 from ctypes import c_int
 
@@ -31,7 +31,6 @@ def draw():
     image.clip_draw(0, 0, 4380,3504, 500,400, 1000,800)
 
     # party에 들어있는 숫자만 태두리(강조) 표시
-    selected = set(party)
     if check_rec(1):
         draw_rectangle(0, 470, 320, 800)
     if check_rec(6):
@@ -77,11 +76,11 @@ def handle_events():
         elif event.type == SDL_KEYDOWN and event.key == SDLK_ESCAPE:
             running = False
         elif event.type == SDL_MOUSEBUTTONDOWN and event.button == SDL_BUTTON_LEFT:
-            play_mode.start_party = party
+            stage01.start_party = party
             mx, my = _get_mouse_pos_from_event(event)
             # 클릭 영역: (800,0) ~ (920,120)
             if 800 <= mx <= 920 and 0 <= my <= 120 and now_people == 4:
-                game_framework.change_mode(play_mode)
+                game_framework.change_mode(stage01)
             elif 0<= mx <=320 and 470 <= my <=800:
                check_party(now_people, 1)
             elif 0<= mx <=320 and 130 <= my <=470:

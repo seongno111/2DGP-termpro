@@ -1,6 +1,6 @@
 import game_framework
 from pico2d import *
-import play_mode
+import stage01
 
 image = None
 running = True

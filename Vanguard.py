@@ -59,6 +59,7 @@ class Attack:
                 print(f'{target.__class__.__name__} died by Vanguard.')
                 try:
                     game_world.remove_object(target)
+                    target.die()
                 except Exception:
                     pass
                 try:

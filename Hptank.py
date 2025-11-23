@@ -64,6 +64,7 @@ class Attack:
                 # 대상 객체와 충돌 등록 제거
                 try:
                     game_world.remove_object(target)
+                    target.die()
                 except Exception:
                     pass
                 try:
@@ -72,8 +73,8 @@ class Attack:
                     pass
                 # 배치 상태 갱신 (있을 경우)
                 try:
-                    import play_mode
-                    ch = getattr(play_mode, 'character', None)
+                    import stage01
+                    ch = getattr(stage01, 'character', None)
                     if ch is not None:
                         key = getattr(target, '_placed_key', None)
                         idx = getattr(target, '_placed_idx', None)

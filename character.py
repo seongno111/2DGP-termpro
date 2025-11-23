@@ -5,7 +5,7 @@ from collections import OrderedDict
 
 import game_framework
 import game_world
-import play_mode
+import stage01
 from state_machine import StateMachine
 
 from Knight import Knight
@@ -203,10 +203,10 @@ class Character:
             TILE_W = 100
             TILE_H = 100
             COLS = 10
-            if len(play_mode.stage_temp) == 0:
+            if len(stage01.stage_temp) == 0:
                 print("stage_temp empty")
                 return False
-            ROWS = len(play_mode.stage_temp) // COLS
+            ROWS = len(stage01.stage_temp) // COLS
 
             col = int(mx // TILE_W)
             row = int((get_canvas_height() - my) // TILE_H)
@@ -217,7 +217,7 @@ class Character:
             if not (0 <= col < COLS and 0 <= row < ROWS):
                 print("Clicked outside grid")
                 return False
-            if not (0 <= idx < len(play_mode.stage_temp)):
+            if not (0 <= idx < len(stage01.stage_temp)):
                 print("Idx out of range")
                 return False
 
@@ -225,10 +225,10 @@ class Character:
                 print(f"Tile {idx} already occupied -> cannot place here")
                 return False
 
-            tile_depth = play_mode.stage_temp[idx] - 1
+            tile_depth = stage01.stage_temp[idx] - 1
             unit_cls = self.unit_map[self.placing_unit]['class']
             candidate_depth = unit_cls().depth
-            print(f"tile_depth={tile_depth}, candidate_depth={candidate_depth}, stage_val={play_mode.stage_temp[idx]}")
+            print(f"tile_depth={tile_depth}, candidate_depth={candidate_depth}, stage_val={stage01.stage_temp[idx]}")
 
             if tile_depth != candidate_depth:
                 print("Depth mismatch -> cannot place here")

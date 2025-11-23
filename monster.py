@@ -2,6 +2,7 @@ from pico2d import load_image, get_canvas_height
 
 import game_framework
 import game_world
+import stage01
 from Tile import Tile
 from state_machine import StateMachine
 
@@ -90,8 +91,8 @@ class Atack_state:
 
                 # play_mode.character가 있으면 배치 상태와 occupied_tiles 갱신
                 try:
-                    import play_mode
-                    ch = getattr(play_mode, 'character', None)
+                    import stage01
+                    ch = getattr(stage01, 'character', None)
                     if ch is not None:
                         key = getattr(target, '_placed_key', None)
                         idx = getattr(target, '_placed_idx', None)
@@ -128,7 +129,7 @@ class Monster:
         canvas_h = get_canvas_height()
         tile_cx = col * tw + tw // 2
         tile_cy = canvas_h - (row * th + th // 2)
-
+        self.dead = False
         self.x, self.y = tile_cx, tile_cy
         self.Hp = 100
         self.Def = 5
@@ -164,6 +165,34 @@ class Monster:
         unit_groups = ['KNIGHT', 'ARCHER', 'HPTANK', 'DPTANK', 'HEALER', 'VANGUARD']
         for ug in unit_groups:
             game_world.add_collision_pair(f'{ug}:MONSTER', None, self)
+
+    def die(self):
+        # 중복 처리 방지
+        if getattr(self, 'dead', False):
+            return
+        self.dead = True
+
+        # 처치 카운트 증가
+        try:
+            stage01.killed_monster += 1
+            print(f"[MONSTER_DIE] killed_monster={stage01.killed_monster}")
+        except Exception as e:
+            print(f"[MONSTER_DIE_ERR] failed increment killed_monster: {e}")
+
+        # 스테이지 로컬 리스트에서 제거
+        try:
+            if self in stage01._monsters_list:
+                stage01._monsters_list.remove(self)
+        except Exception:
+            pass
+
+        # 충돌 목록 등에서 제거(프로젝트 구조에 맞게 추가)
+        try:
+            # game_world.remove_object 가 있으면 호출
+            game_world.remove_object(self)
+        except Exception:
+            # 없으면 game_world 내부 자료구조 직접 제거 필요
+            print("[MONSTER_DIE_WARN] game_world.remove_object failed or not implemented")
 
     def draw(self):
         self.state_machine.draw()
