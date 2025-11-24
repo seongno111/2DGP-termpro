@@ -2,6 +2,7 @@ import game_framework
 from pico2d import *
 import choice_mode
 import stage01
+import stage02
 from sdl2 import SDL_MOUSEBUTTONDOWN, SDL_BUTTON_LEFT, SDL_QUIT, SDL_GetMouseState
 from ctypes import c_int
 
@@ -62,6 +63,11 @@ def handle_events():
             running = False
         elif event.type == SDL_MOUSEBUTTONDOWN and event.button == SDL_BUTTON_LEFT:
             mx, my = _get_mouse_pos_from_event(event)
-            # 클릭 영역: x 500~600, y 100~200
+            # 클릭 영역: x 500~600, y 100~200 -> choice_mode로, 기본적으로 stage01로 이어짐
             if 500 <= mx <= 600 and 100 <= my <= 200:
+                choice_mode.next_stage = stage01
+                game_framework.change_mode(choice_mode)
+            # 클릭 영역: x 450~550, y 400~500 -> choice_mode로, 이후 stage02로 이어지게 설정
+            elif 450 <= mx <= 550 and 400 <= my <= 500:
+                choice_mode.next_stage = stage02
                 game_framework.change_mode(choice_mode)

@@ -10,13 +10,20 @@ logo_start_time = 0.0
 party = [0,0,0,0]
 now_people = 0
 
+# next_stage: None 이면 기본으로 stage01 사용. main_mode가 클릭한 버튼에 따라 여기로 stage 모듈을 설정함.
+next_stage = None
+
 def init():
     global image
     global running
     global logo_start_time
+    global next_stage
     image = load_image('choice.png')
     running = True
     logo_start_time = get_time()
+    # 기본값은 stage01로 설정
+    if next_stage is None:
+        next_stage = stage01
 
 def finish():
     global image
@@ -68,7 +75,7 @@ def _get_mouse_pos_from_event(ev):
     return mx, my
 
 def handle_events():
-    global running, now_people, party
+    global running, now_people, party, next_stage
     events = get_events()
     for event in events:
         if event.type == SDL_QUIT:
@@ -76,11 +83,19 @@ def handle_events():
         elif event.type == SDL_KEYDOWN and event.key == SDLK_ESCAPE:
             running = False
         elif event.type == SDL_MOUSEBUTTONDOWN and event.button == SDL_BUTTON_LEFT:
-            stage01.start_party = party
+            # 선택한 스테이지로 start_party 전달 후 해당 스테이지로 전환
             mx, my = _get_mouse_pos_from_event(event)
-            # 클릭 영역: (800,0) ~ (920,120)
+            # 클릭 영역: (800,0) ~ (920,120) 시작 버튼
             if 800 <= mx <= 920 and 0 <= my <= 120 and now_people == 4:
-                game_framework.change_mode(stage01)
+                target_stage = next_stage if next_stage is not None else stage01
+                try:
+                    target_stage.start_party = party
+                except Exception:
+                    # 안전 처리: 무시
+                    pass
+                # 사용 후 초기화
+                next_stage = None
+                game_framework.change_mode(target_stage)
             elif 0<= mx <=320 and 470 <= my <=800:
                check_party(now_people, 1)
             elif 0<= mx <=320 and 130 <= my <=470:
