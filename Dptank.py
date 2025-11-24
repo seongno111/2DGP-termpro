@@ -90,8 +90,10 @@ class Dptank:
         self.x, self.y = 0, 0
         self.frame = 0
         self.face_dir = 0
+        self.stop = 3
+        self.now_stop = 0
         self.max_hp = 1500
-        self.Hp = 1500
+        self.Hp = 1000
         self.Def = 30
         self.Atk = 60
         self.number = 4

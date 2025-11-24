@@ -105,10 +105,12 @@ class Vanguard:
         self.x, self.y = 0, 0
         self.frame = 0
         self.face_dir = 0
+        self.stop = 1
+        self.now_stop = 0
         self.max_hp = 700
         self.Hp = 700
         self.Def = 10
-        self.Atk = 110
+        self.Atk = 60
         self.number = 6
         self.tile_w = 100
         self.tile_h = 100

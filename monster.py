@@ -220,18 +220,18 @@ class Monster:
         # Knight와 충돌하는 경우: Knight의 now_stop/stop 검사
         try:
             other_cls = other.__class__.__name__ if hasattr(other, '__class__') else ''
-            if other_cls == 'Knight':
+            if other_cls in ('Knight', 'Dptank', 'Vanguard', 'Hptank'):
                 now_stop = getattr(other, 'now_stop', None)
                 stop = getattr(other, 'stop', None)
                 if now_stop is not None and stop is not None:
                     # 용량 초과면 통과(충돌 무시)
                     if now_stop >= stop:
-                        print(f'[MONSTER_COLLIDE] passing Knight (now_stop={now_stop}, stop={stop})')
+                        print(f'[MONSTER_COLLIDE] passing {other_cls} (now_stop={now_stop}, stop={stop})')
                         return
                     # 제한 미달이면 카운트 증가 후 충돌 처리
                     try:
                         other.now_stop += 1
-                        print(f'[MONSTER_COLLIDE] incremented Knight.now_stop -> {other.now_stop}')
+                        print(f'[MONSTER_COLLIDE] incremented {other_cls}.now_stop -> {other.now_stop}')
                     except Exception:
                         pass
         except Exception:

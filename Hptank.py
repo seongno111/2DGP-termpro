@@ -111,10 +111,12 @@ class Hptank:
         self.x, self.y = 0, 0
         self.frame = 0
         self.face_dir = 0
+        self.stop = 3
+        self.now_stop = 0
         self.max_hp = 2000
         self.Hp = 2000
         self.Def = 10
-        self.Atk = 50
+        self.Atk = 60
         self.number = 3
         self.tile_w = 100
         self.tile_h = 100
