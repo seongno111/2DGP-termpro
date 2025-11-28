@@ -27,32 +27,34 @@ class Idle:
         else:
             self.archer.image[int(self.archer.frame)].clip_composite_draw(0, 0, 100, 100, 0, 'h', x, y+50, 150, 160)
 
+
 class Attack:
     def __init__(self, archer):
         self.archer = archer
         self.attack_timer = 0.0
+
     def enter(self, e):
         self.archer.frame = 0
         self.attack_timer = 0.0
         if isinstance(e, tuple) and len(e) >= 3:
             self.archer.target = e[2]
+
     def exit(self, e):
         self.archer.frame = 0
         self.attack_timer = 0.0
+
     def do(self):
         self.archer.frame = (self.archer.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 5
         target = getattr(self.archer, 'target', None)
 
-        # 타겟이 월드에서 제거되었는지 검사
+        # 타겟 유효성 검사
         removed_from_world = False
         try:
             removed_from_world = not any(target in layer for layer in game_world.world) if target is not None else False
         except Exception:
             removed_from_world = True
 
-        # 타겟이 없거나 사망했거나 월드에서 제거되었거나 범위 밖이면 공격 종료
-        if (target is None) or (getattr(target, 'Hp', 1) <= 0) or removed_from_world or (
-        not game_world.in_attack_range(self.archer, target)):
+        if (target is None) or (getattr(target, 'Hp', 1) <= 0) or removed_from_world or (not game_world.in_attack_range(self.archer, target)):
             self.archer.target = None
             self.archer.state_machine.handle_state_event(('SEPARATE', None))
             return
@@ -61,27 +63,54 @@ class Attack:
         self.attack_timer += game_framework.frame_time
         if self.attack_timer >= ATTACK_INTERVAL:
             self.attack_timer -= ATTACK_INTERVAL
-            # 발사
-            arrow = Archer_Arrow(self.archer.face_dir)
-            arrow.x = self.archer.x
-            arrow.y = self.archer.y
-            arrow.owner = self.archer
-            arrow.owner_atk = getattr(self.archer, 'Atk', 120)
 
-            # 방향 벡터 계산
-            dx = target.x - arrow.x
-            dy = target.y - arrow.y
-            dist = math.hypot(dx, dy)
-            if dist == 0:
-                vx, vy = arrow.speed, 0
-            else:
-                vx = dx / dist * arrow.speed
-                vy = dy / dist * arrow.speed
-            arrow.vx = vx
-            arrow.vy = vy
-            # add to world and collision pairs
-            game_world.add_object(arrow, 7)
-            game_world.add_collision_pair('ARCHER_ARROW:MONSTER', arrow, None)
+            # 즉시 데미지 적용 (화살 충돌 시와 동일한 계산)
+            atk = getattr(self.archer, 'Atk', 120)
+            dmg = max(0, int(atk) - getattr(target, 'Def', 0)) if hasattr(target, 'Hp') else 0
+            if hasattr(target, 'Hp'):
+                target.Hp -= dmg
+            print(f'Archer attack applied to {getattr(target, "__class__", type(target)).__name__} dmg={dmg} target_hp={getattr(target, "Hp", "?")}')
+
+            # 대상이 사망하면 월드에서 제거 시도 (원래 화살 처리와 동일하게)
+            if getattr(target, 'Hp', 1) <= 0:
+                try:
+                    game_world.remove_object(target)
+                    try:
+                        target.die()
+                    except Exception:
+                        pass
+                except Exception:
+                    pass
+                try:
+                    game_world.remove_collision_object(target)
+                except Exception:
+                    pass
+                try:
+                    if getattr(self.archer, 'target', None) is target:
+                        self.archer.target = None
+                        if any(self.archer in layer for layer in game_world.world):
+                            try:
+                                self.archer.state_machine.handle_state_event(('SEPARATE', None))
+                            except Exception:
+                                pass
+                except Exception:
+                    pass
+
+            # 오버레이 이펙트 생성: 대상 위에 3프레임으로 표시
+            try:
+                overlay = Archer_Arrow(target=target, owner=self.archer, owner_atk=atk, life_frames=3, depth=7)
+                # 기존 오버레이가 있으면 제거
+                old = getattr(target, '_overlay', None)
+                if old is not None:
+                    try:
+                        game_world.remove_object(old)
+                    except Exception:
+                        pass
+                target._overlay = overlay
+                game_world.add_object(overlay, overlay.depth)
+            except Exception:
+                pass
+
     def draw(self):
         x = self.archer.x
         y = self.archer.y + 50
@@ -190,41 +219,127 @@ class Archer:
         self.state_machine.handle_state_event(('COLLIDE', group, other))
 
 
+
 class Archer_Arrow:
     image = []
     for i in range(4):
         image.append(None)
-    def __init__(self, dir):
-        self.face = dir
-        self.depth = 1
-        self.x, self.y = 0, 0
-        self.frame = 0
-        self.speed = 800
-        self.vx = self.speed
-        self.vy = 0
-        self.owner = None
-        self.owner_atk = 0
+
+    def __init__(self, target=None, owner=None, owner_atk=0, life_frames=3, depth=7):
+        self.target = target
+        self.owner = owner
+        self.owner_atk = owner_atk
+        self.depth = depth
         self.removed = False
+
+        # 애니메이션 상태: 0..life_frames-1
+        self.life_frames = max(1, int(life_frames))
+        self.frame_idx = 0
+        self.frame_timer = 0.0
+        # 각 프레임 지속시간 (초) — 필요시 조절
+        self.frame_duration = 0.06
+
         if self.image[0] is None:
             self.image[0] = load_image('arrow_01_(1).png')
             self.image[1] = load_image('arrow_01_(2).png')
             self.image[2] = load_image('arrow_01_(3).png')
-    def draw(self):
-        if self.face == 0:
-            self.image[int(self.frame)].clip_draw(0, 0, 88, 16, self.x, self.y, 50, 10)
-        else:
-            self.image[int(self.frame)].clip_composite_draw(0, 0, 88, 16,0, 'h', self.x, self.y, 50, 10)
+
+        # 초기 위치는 대상의 좌표를 따라가도록 설정
+        try:
+            if self.target is not None:
+                self.x = self.target.x
+                self.y = self.target.y
+            else:
+                self.x, self.y = 0, 0
+        except Exception:
+            self.x, self.y = 0, 0
+
     def update(self):
-        self.frame = (self.frame + 3 * ACTION_PER_TIME * game_framework.frame_time) % 3
         if self.removed:
             return
-        self.x += self.vx * game_framework.frame_time
-        self.y += self.vy * game_framework.frame_time
-        # 화면 밖이면 제거 시도
-        if self.x < -100 or self.x > 1100 or self.y < -200 or self.y > 1200:
-            self._safe_remove()
+
+        # 대상이 없거나 월드에 더 이상 없으면 제거
+        try:
+            if self.target is None or not any(self.target in layer for layer in game_world.world):
+                # 참조 정리
+                try:
+                    if self.target is not None and getattr(self.target, '_overlay', None) is self:
+                        self.target._overlay = None
+                except Exception:
+                    pass
+                if not self.removed:
+                    try:
+                        game_world.remove_object(self)
+                    except Exception:
+                        pass
+                    self.removed = True
+                return
+        except Exception:
+            # 안전 제거
+            try:
+                if self.target is not None and getattr(self.target, '_overlay', None) is self:
+                    self.target._overlay = None
+            except Exception:
+                pass
+            if not self.removed:
+                try:
+                    game_world.remove_object(self)
+                except Exception:
+                    pass
+                self.removed = True
+            return
+
+        # 위치 업데이트: 대상 위치를 따라감
+        try:
+            self.x = self.target.x
+            self.y = self.target.y
+        except Exception:
+            pass
+
+        # 프레임 타이머 증가 및 프레임 전환
+        self.frame_timer += game_framework.frame_time
+        if self.frame_timer >= (self.frame_idx + 1) * self.frame_duration:
+            self.frame_idx += 1
+
+        # 프레임이 지정된 수를 초과하면 제거
+        if self.frame_idx >= self.life_frames:
+            try:
+                if self.target is not None and getattr(self.target, '_overlay', None) is self:
+                    self.target._overlay = None
+            except Exception:
+                pass
+            if not self.removed:
+                try:
+                    game_world.remove_object(self)
+                except Exception:
+                    pass
+                self.removed = True
+
+    def draw(self):
+        # 이미지 인덱스 안전 계산 (세 장 이미지 반복 가능)
+        idx = min(2, int(self.frame_idx))
+        # y 오프셋을 프레임에 따라 아래로 이동 (프레임 0: 약 위, 마지막 프레임: 아래)
+        # 예: 이동량 30 픽을 프레임 수로 나눔
+        total_drop = 30
+        drop_per_frame = total_drop / max(1, self.life_frames)
+        y_offset = total_drop - (drop_per_frame * self.frame_idx)
+
+        try:
+            draw_x = self.x
+            draw_y = self.y + 50 + y_offset
+        except Exception:
+            draw_x, draw_y = self.x, self.y + 50
+
+        # 가로 반전은 원래 화살 방향 무시하고 대상 위에 고정으로 그리도록 함
+        try:
+            self.image[idx].clip_composite_draw(0, 0, 88, 16, math.radians(90),'h', draw_x, draw_y, 50, 10)
+        except Exception:
+            pass
+
     def get_bb(self):
-        return self.x - 12, self.y - 4, self.x + 12, self.y + 4
+        # 이 오버레이는 충돌 판정이 필요 없으므로 빈 박스 반환
+        return self.x, self.y, self.x, self.y
+
     def _safe_remove(self):
         if self.removed:
             return
@@ -233,52 +348,3 @@ class Archer_Arrow:
             game_world.remove_object(self)
         except Exception:
             pass
-        try:
-            game_world.remove_collision_object(self)
-        except Exception:
-            pass
-    def handle_collision(self, group, other):
-        if self.removed:
-            return
-        left, right = (group.split(':') + ['', ''])[:2]
-        left = left.strip().upper()
-        right = right.strip().upper()
-        if not ((left == 'ARCHER_ARROW' and right == 'MONSTER') or (left == 'MONSTER' and right == 'ARCHER_ARROW')):
-            return
-        try:
-            atk = getattr(self, 'owner_atk', None)
-            if atk is None and self.owner is not None:
-                atk = getattr(self.owner, 'Atk', 0)
-            if atk is None:
-                atk = 0
-            if hasattr(other, 'Hp'):
-                dmg = max(0, int(atk) - getattr(other, 'Def', 0))
-                other.Hp -= dmg
-            else:
-                dmg = 0
-            print(f'Archer_Arrow hit {other.__class__.__name__} dmg={dmg} target_hp={getattr(other, "Hp", "?")}')
-            if getattr(other, 'Hp', 1) <= 0:
-                try:
-                    game_world.remove_object(other)
-                    other.die()
-                except Exception:
-                    pass
-                try:
-                    game_world.remove_collision_object(other)
-                except Exception:
-                    pass
-                # owner가 타겟으로 잡고 있으면 해제하고 SEPARATE 이벤트 발생 (owner가 월드에 있을 때만)
-                try:
-                    if self.owner is not None and getattr(self.owner, 'target', None) is other:
-                        self.owner.target = None
-                        if any(self.owner in layer for layer in game_world.world):
-                            try:
-                                self.owner.state_machine.handle_state_event(('SEPARATE', None))
-                            except Exception:
-                                pass
-                except Exception:
-                    pass
-            self._safe_remove()
-        except Exception as e:
-            print(f'Archer_Arrow.handle_collision error: {e}')
-            self._safe_remove()

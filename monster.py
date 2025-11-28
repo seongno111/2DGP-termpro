@@ -1,3 +1,4 @@
+# python
 from pico2d import load_image, get_canvas_height
 
 import game_framework
@@ -32,7 +33,6 @@ class Idle:
         x = self.monster.x
         y = self.monster.y + 30
         face = getattr(self.monster, 'face_dir', 0)
-        # face == 0: 오른쪽(정방향), 그 외: 좌우 반전
         if face == 0:
             self.monster.image[int(self.monster.frame)].clip_draw(0, 0, 100, 100, x, y, 150, 150)
         else:
@@ -54,32 +54,36 @@ class Atack_state:
     def do(self):
         self.monster.frame = (self.monster.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 3
         target = getattr(self.monster, 'target', None)
-        # 만약 대상이 없거나 충돌이 끊기면 SEPARATE 이벤트 발생
+
+        # 대상이 없거나 충돌이 끊기면 SEPARATE 발생
         if target is None or not game_world.collide(self.monster, target):
             self.monster.state_machine.handle_state_event(('SEPARATE', None))
             return
+
         # 공격 간격 (초)
         ATTACK_INTERVAL = 0.8
         self.attack_timer += game_framework.frame_time
         if self.attack_timer >= ATTACK_INTERVAL:
             self.attack_timer -= ATTACK_INTERVAL
+
             dmg = max(0, self.monster.Atk - getattr(target, 'Def', 0))
             # 체력 감소
-            target.Hp -= dmg
+            try:
+                target.Hp -= dmg
+            except Exception:
+                pass
             # 디버그 출력
             print(
                 f'Monster({self.monster.num}) attacked {target.__class__.__name__} dmg={dmg} target_hp={getattr(target, "Hp", "?")}')
             # 대상이 죽으면 제거 및 충돌 리스트에서 제거, 상태복귀
             if getattr(target, 'Hp', 1) <= 0:
                 print(f'{target.__class__.__name__} died.')
-                # 오버레이가 있으면 먼저 제거
                 try:
                     if hasattr(target, '_overlay'):
                         game_world.remove_object(target._overlay)
                 except Exception:
                     pass
 
-                # 유닛 객체 제거 및 충돌 정보 제거
                 try:
                     game_world.remove_object(target)
                 except Exception:
@@ -89,7 +93,6 @@ class Atack_state:
                 except Exception:
                     pass
 
-                # play_mode.character가 있으면 배치 상태와 occupied_tiles 갱신
                 try:
                     import stage01
                     ch = getattr(stage01, 'character', None)
@@ -110,7 +113,6 @@ class Atack_state:
         x = self.monster.x
         y = self.monster.y + 30
         face = getattr(self.monster, 'face_dir', 0)
-        # face == 0: 오른쪽(정방향), 그 외: 좌우 반전
         if face == 0:
             self.monster.image[int(self.monster.frame)].clip_draw(0, 0, 100, 100, x, y, 150, 150)
         else:
@@ -133,9 +135,11 @@ class Monster:
         self.x, self.y = tile_cx, tile_cy
         self.Hp = 300
         self.Def = 5
+        self.removed = False
+        self.state_machine = None
         self.Atk = 50
         self.frame = 0
-        self.face_dir = 0  # 1: right, -1: left
+        self.face_dir = 0
         self.target = None
         if self.image[0] is None:
             self.image[0] = load_image('brownbear_01.png')
@@ -144,9 +148,8 @@ class Monster:
         self.IDLE = Idle(self)
         self.ATK = Atack_state(self)
 
-        # 이벤트 검사기들
         def _on_collide(ev):
-            return isinstance(ev, tuple) and len(ev) >= 3 and ev[0] == 'COLLIDE' and isinstance(ev[2], object)
+            return isinstance(ev, tuple) and len(ev) >= 3 and ev[0] == 'COLLIDE'
 
         def _on_separate(ev):
             return isinstance(ev, tuple) and len(ev) >= 1 and ev[0] == 'SEPARATE'
@@ -166,80 +169,82 @@ class Monster:
         for ug in unit_groups:
             game_world.add_collision_pair(f'{ug}:MONSTER', None, self)
 
+
     def die(self):
-        # 중복 처리 방지
-        if getattr(self, 'dead', False):
+        if self.removed:
             return
-        self.dead = True
-
-        # 처치 카운트 증가
+        self.removed = True
         try:
-            stage01.killed_monster += 1
-            print(f"[MONSTER_DIE] killed_monster={stage01.killed_monster}")
-        except Exception as e:
-            print(f"[MONSTER_DIE_ERR] failed increment killed_monster: {e}")
-
-        # 스테이지 로컬 리스트에서 제거
-        try:
-            if self in stage01._monsters_list:
-                stage01._monsters_list.remove(self)
-        except Exception:
-            pass
-
-        # 충돌 목록 등에서 제거(프로젝트 구조에 맞게 추가)
-        try:
-            # game_world.remove_object 가 있으면 호출
             game_world.remove_object(self)
         except Exception:
-            # 없으면 game_world 내부 자료구조 직접 제거 필요
-            print("[MONSTER_DIE_WARN] game_world.remove_object failed or not implemented")
-
+            try:
+                for layer in list(game_world.world):
+                    if self in layer:
+                        layer.remove(self)
+            except Exception:
+                pass
+        try:
+            game_world.remove_collision_object(self)
+        except Exception:
+            pass
+        try:
+            import stage01
+            stage01.killed_monster += 1
+            print(f'[MONSTER_DIE] killed_monster={stage01.killed_monster}')
+        except Exception:
+            pass
+        try:
+            if hasattr(self, 'state_machine') and self.state_machine is not None:
+                self.state_machine = None
+        except Exception:
+            pass
     def draw(self):
         self.state_machine.draw()
     def update(self):
         self.state_machine.update()
         if self.x > 950:
-            game_world.remove_object(self)
             try:
-                game_world.remove_collision_object(self)
+                game_world.remove_object(self)
             except Exception:
                 pass
             try:
-                game_world.remove_object(self)
+                game_world.remove_collision_object(self)
             except Exception:
                 pass
     def get_bb(self):
         return self.x - 50, self.y - 50, self.x + 50, self.y + 50
     def handle_event(self, event):
         self.state_machine.handle_state_event(('INPUT', event))
+
     def handle_collision(self, group, other):
-        # 다른 객체가 없으면 무시
-        if other is None:
+        try:
+            if other is None:
+                return
+            if not any(other in layer for layer in game_world.world):
+                return
+        except Exception:
             return
 
-        # Knight와 충돌하는 경우: Knight의 now_stop/stop 검사
-        try:
-            other_cls = other.__class__.__name__ if hasattr(other, '__class__') else ''
-            if other_cls in ('Knight', 'Dptank', 'Vanguard', 'Hptank'):
-                now_stop = getattr(other, 'now_stop', None)
-                stop = getattr(other, 'stop', None)
-                if now_stop is not None and stop is not None:
-                    # 용량 초과면 통과(충돌 무시)
-                    if now_stop >= stop:
-                        print(f'[MONSTER_COLLIDE] passing {other_cls} (now_stop={now_stop}, stop={stop})')
-                        return
-                    # 제한 미달이면 카운트 증가 후 충돌 처리
+        if getattr(self, 'Hp', 1) <= 0 or self.removed:
+            return
+
+        left, right = (group.split(':') + ['', ''])[:2]
+        left = left.strip().upper()
+        right = right.strip().upper()
+
+        attackers = {'KNIGHT', 'ARCHER', 'VANGUARD', 'HEALER'}
+        if (left in attackers and right == 'MONSTER') or (right in attackers and left == 'MONSTER'):
+            try:
+                if getattr(self, 'target', None) is other:
+                    return
+                self.target = other
+                if hasattr(self, 'state_machine') and self.state_machine is not None:
                     try:
-                        other.now_stop += 1
-                        print(f'[MONSTER_COLLIDE] incremented {other_cls}.now_stop -> {other.now_stop}')
+                        self.state_machine.handle_state_event(('COLLIDE', group, other))
                     except Exception:
                         pass
-        except Exception:
-            pass
+            except Exception:
+                pass
+            return
 
-        # 기본 충돌 처리: 타겟 설정 및 상태 이벤트 전달
-        self.target = other
-        try:
-            self.state_machine.handle_state_event(('COLLIDE', group, other))
-        except Exception:
-            pass
+        return

@@ -106,32 +106,27 @@ def spwan_monster():
     if _result_shown:
         return
     now = time.time()
-    # 디버그 출력
-    print(f"[SPAWN_CHECK] monster_num={monster_num}, len(_spawn_positions)={len(_spawn_positions)}, elapsed={now - _last_spawn_time:.2f}s")
     if not _spawn_positions:
-        print("[SPAWN_CHECK] no spawn positions")
+
         return
     if now - _last_spawn_time >= _spawn_interval and monster_num < 10:
         pos_index = _spawn_positions[_spawn_index]
         try:
             monster = Monster(pos_index)
         except Exception as e:
-            print(f"[SPAWN_ERROR] Monster ctor failed: {e}")
-            # 실패 시 마지막 시간 갱신하지 않아 즉시 재시도 가능하게 할 수도 있음
             _last_spawn_time = now
             return
 
         try:
             game_world.add_object(monster, (get_canvas_height() - monster.y) // 100)
         except Exception as e:
-            print(f"[SPAWN_ERROR] add_object failed: {e}")
             return
 
         # 로컬 리스트에 보관 (위치 검사용)
         try:
             _monsters_list.append(monster)
         except Exception as e:
-            print(f"[SPAWN_WARN] append to _monsters_list failed: {e}")
+            pass
 
         # 충돌쌍 등록 시도 (안전하게)
         try:
@@ -146,14 +141,14 @@ def spwan_monster():
                     if monster not in pairs[1]:
                         pairs[1].append(monster)
         except Exception as e:
-            print(f"[SPAWN_WARN] collision pair registration issue: {e}")
+            pass
 
         _spawn_index = (_spawn_index + 1) % len(_spawn_positions)
         _last_spawn_time = now
 
         # 몬스터 카운트는 등록이 성공한 뒤에 증가
         monster_num += 1
-        print(f"[SPAWN_OK] spawned at pos {pos_index}, new monster_num={monster_num}")
+
 
 
 def _check_defeat_by_monster_enter_goal():

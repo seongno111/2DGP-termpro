@@ -44,6 +44,7 @@ class Attack:
     def exit(self, e):
         self.knight.frame = 0
         self.attack_timer = 0.0
+        self.knight.now_stop = 0
     def do(self):
         # 애니 프레임 업데이트
         self.knight.frame = (self.knight.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 5
@@ -170,6 +171,7 @@ class Knight:
         return self.x - 50, self.y - 40, self.x + 50, self.y + 40
 
     def update(self):
+        print(self.now_stop)
         self.state_machine.update()
 
     def handle_event(self, event):
