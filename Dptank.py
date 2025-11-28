@@ -161,16 +161,34 @@ class Dptank:
         left, right = (group.split(':') + ['', ''])[:2]
         left = left.strip().upper()
         right = right.strip().upper()
+
+        # 이미 다른 유닛에 의해 저지되었으면 패스
+        if getattr(other, '_blocked_by', None) is not None:
+            return
+
         if (left == 'DPTANK' and right == 'MONSTER') or (left == 'MONSTER' and right == 'DPTANK'):
-            # 동일 타겟이면 중복 방지
-            if getattr(self, 'target', None) is other:
-                return
-            self.target = other
-            self.state_machine.handle_state_event(('COLLIDE', group, other))
+            if self.now_stop < self.stop:
+                other._blocked_by = self
+                self.now_stop += 1
+                if getattr(self, 'target', None) is None:
+                    self.target = other
+                try:
+                    self.state_machine.handle_state_event(('COLLIDE', group, other))
+                except Exception:
+                    pass
             return
         # fallback
-        self.target = other
-        self.state_machine.handle_state_event(('COLLIDE', group, other))
+        if self.now_stop < self.stop:
+            other._blocked_by = self
+            self.now_stop += 1
+            if getattr(self, 'target', None) is None:
+                self.target = other
+            try:
+                self.state_machine.handle_state_event(('COLLIDE', group, other))
+            except Exception:
+                pass
+        return
+
 
     def handle_event(self, event):
         self.state_machine.handle_state_event(('INPUT', event))

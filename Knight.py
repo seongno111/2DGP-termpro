@@ -44,7 +44,6 @@ class Attack:
     def exit(self, e):
         self.knight.frame = 0
         self.attack_timer = 0.0
-        self.knight.now_stop = 0
     def do(self):
         # 애니 프레임 업데이트
         self.knight.frame = (self.knight.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 5
@@ -102,7 +101,7 @@ class Knight:
         self.frame = 0
         self.face_dir = 0 # 0오른쪽, 1왼쪽, 2위, 3아래
         self.max_hp = 1000
-        self.stop = 2
+        self.stop = 3
         self.now_stop = 0
         self.Hp = 500
         self.Def = 50
@@ -120,7 +119,7 @@ class Knight:
             self.image[3] = load_image('tuar03_04.png')
             self.image[4] = load_image('tuar03_05.png')
             self.image[5] = load_image('tuar03_06.png')
-            self.image[7] = load_image('tuar03_07.png')
+            self.image[6] = load_image('tuar03_07.png')
         if self.image_at[0] is None:
             self.image_at[0] = load_image('k_at_ef_01.png')
             self.image_at[1] = load_image('k_at_ef_02.png')
@@ -168,7 +167,7 @@ class Knight:
             self.font.draw(self.x-50+i*10, self.y+80, f'/', (100, 250, 100))
 
     def get_bb(self):
-        return self.x - 50, self.y - 40, self.x + 50, self.y + 40
+        return self.x - 40, self.y - 40, self.x + 40, self.y + 40
 
     def update(self):
         print(self.now_stop)
@@ -182,13 +181,34 @@ class Knight:
         left = left.strip().upper()
         right = right.strip().upper()
 
-        # KNIGHT와 MONSTER 간 충돌인 경우에만 특별 처리 (양방향 허용)
-        if (left == 'KNIGHT' and right == 'MONSTER') or (left == 'MONSTER' and right == 'KNIGHT'):
-            # game_world.handle_collisions에서 범위 판정으로 여기까지 왔으므로 바로 타겟 설정
-            self.target = other
-            self.state_machine.handle_state_event(('COLLIDE', group, other))
+        # 충돌 처리 공통 로직: 이미 다른 유닛에 의해 저지되어 있거나
+        # 현재 now_stop이 최대이면 패스(몬스터는 지나감)
+        if getattr(other, '_blocked_by', None) is not None:
             return
 
-        # 기본 폴백
-        self.target = other
-        self.state_machine.handle_state_event(('COLLIDE', group, other))
+        # KNIGHT와 MONSTER 간 충돌인 경우 특별 처리
+        if (left == 'KNIGHT' and right == 'MONSTER') or (left == 'MONSTER' and right == 'KNIGHT'):
+            if self.now_stop < self.stop:
+                other._blocked_by = self
+                self.now_stop += 1
+                if getattr(self, 'target', None) is None:
+                    self.target = other
+                try:
+                    self.state_machine.handle_state_event(('COLLIDE', group, other))
+                except Exception:
+                    pass
+            return
+
+        # fallback: 다른 그룹과의 충돌도 동일 규칙 적용
+        if self.now_stop < self.stop:
+            other._blocked_by = self
+            self.now_stop += 1
+            if getattr(self, 'target', None) is None:
+                self.target = other
+            try:
+                self.state_machine.handle_state_event(('COLLIDE', group, other))
+            except Exception:
+                pass
+        return
+
+    ...

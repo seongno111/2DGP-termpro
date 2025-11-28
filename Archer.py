@@ -73,26 +73,15 @@ class Attack:
 
             # 대상이 사망하면 월드에서 제거 시도 (원래 화살 처리와 동일하게)
             if getattr(target, 'Hp', 1) <= 0:
+                print(f'{target.__class__.__name__} died by archer.')
+                # 몬스터 제거 및 충돌 제거
                 try:
                     game_world.remove_object(target)
-                    try:
-                        target.die()
-                    except Exception:
-                        pass
+                    target.die()
                 except Exception:
                     pass
                 try:
                     game_world.remove_collision_object(target)
-                except Exception:
-                    pass
-                try:
-                    if getattr(self.archer, 'target', None) is target:
-                        self.archer.target = None
-                        if any(self.archer in layer for layer in game_world.world):
-                            try:
-                                self.archer.state_machine.handle_state_event(('SEPARATE', None))
-                            except Exception:
-                                pass
                 except Exception:
                     pass
 
@@ -332,7 +321,7 @@ class Archer_Arrow:
 
         # 가로 반전은 원래 화살 방향 무시하고 대상 위에 고정으로 그리도록 함
         try:
-            self.image[idx].clip_composite_draw(0, 0, 88, 16, math.radians(90),'h', draw_x, draw_y, 50, 10)
+            self.image[idx].clip_composite_draw(0, 0, 88, 16, math.radians(90),'h', draw_x, draw_y, 100, 20)
         except Exception:
             pass
 

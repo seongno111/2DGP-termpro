@@ -62,7 +62,7 @@ class Attack:
             target.Hp -= dmg
             print(f'Knight attacked Monster dmg={dmg} target_hp={getattr(target, "Hp", "?")}')
             if getattr(target, 'Hp', 1) <= 0:
-                print(f'{target.__class__.__name__} died by Knight.')
+                print(f'{target.__class__.__name__} died by Vanguard.')
                 # 몬스터 제거 및 충돌 제거
                 try:
                     game_world.remove_object(target)
@@ -193,13 +193,31 @@ class Vanguard:
         left = left.strip().upper()
         right = right.strip().upper()
 
-        # KNIGHT와 MONSTER 간 충돌인 경우에만 특별 처리 (양방향 허용)
+        # 이미 다른 유닛에 의해 저지되었으면 패스
+        if getattr(other, '_blocked_by', None) is not None:
+            return
+
+        # VANGUARD와 MONSTER 간 충돌인 경우에만 특별 처리 (양방향 허용)
         if (left == 'VANGUARD' and right == 'MONSTER') or (left == 'MONSTER' and right == 'VANGUARD'):
-            # game_world.handle_collisions에서 범위 판정으로 여기까지 왔으므로 바로 타겟 설정
-            self.target = other
-            self.state_machine.handle_state_event(('COLLIDE', group, other))
+            if self.now_stop < self.stop:
+                other._blocked_by = self
+                self.now_stop += 1
+                if getattr(self, 'target', None) is None:
+                    self.target = other
+                try:
+                    self.state_machine.handle_state_event(('COLLIDE', group, other))
+                except Exception:
+                    pass
             return
 
         # 기본 폴백
-        self.target = other
-        self.state_machine.handle_state_event(('COLLIDE', group, other))
+        if self.now_stop < self.stop:
+            other._blocked_by = self
+            self.now_stop += 1
+            if getattr(self, 'target', None) is None:
+                self.target = other
+            try:
+                self.state_machine.handle_state_event(('COLLIDE', group, other))
+            except Exception:
+                pass
+        return

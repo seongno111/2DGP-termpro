@@ -203,10 +203,22 @@ class Character:
             TILE_W = 100
             TILE_H = 100
             COLS = 10
-            if len(stage01.stage_temp) == 0:
+
+            # 현재 로드된 스테이지 모듈을 동적으로 찾아 사용 (stage02 우선, 없으면 stage01)
+            import sys
+            stage_module = None
+            for mod_name in ('stage02', 'stage01'):
+                if mod_name in sys.modules:
+                    stage_module = sys.modules[mod_name]
+                    break
+            if stage_module is None:
+                # fallback: 기존에 import 해둔 stage01 사용
+                stage_module = stage01
+
+            if not hasattr(stage_module, 'stage_temp') or len(stage_module.stage_temp) == 0:
                 print("stage_temp empty")
                 return False
-            ROWS = len(stage01.stage_temp) // COLS
+            ROWS = len(stage_module.stage_temp) // COLS
 
             col = int(mx // TILE_W)
             row = int((get_canvas_height() - my) // TILE_H)
@@ -217,7 +229,7 @@ class Character:
             if not (0 <= col < COLS and 0 <= row < ROWS):
                 print("Clicked outside grid")
                 return False
-            if not (0 <= idx < len(stage01.stage_temp)):
+            if not (0 <= idx < len(stage_module.stage_temp)):
                 print("Idx out of range")
                 return False
 
@@ -225,10 +237,10 @@ class Character:
                 print(f"Tile {idx} already occupied -> cannot place here")
                 return False
 
-            tile_depth = stage01.stage_temp[idx] - 1
+            tile_depth = stage_module.stage_temp[idx] - 1
             unit_cls = self.unit_map[self.placing_unit]['class']
             candidate_depth = unit_cls().depth
-            print(f"tile_depth={tile_depth}, candidate_depth={candidate_depth}, stage_val={stage01.stage_temp[idx]}")
+            print(f"DEBUG: tile_depth={tile_depth}, candidate_depth={candidate_depth}, idx={idx}")
 
             if tile_depth != candidate_depth:
                 print("Depth mismatch -> cannot place here")
@@ -245,6 +257,7 @@ class Character:
             unit._placed_idx = idx
 
             game_world.add_object(unit, (get_canvas_height() - my) // 100)
+
             group = f'{unit.__class__.__name__.upper()}:MONSTER'
             game_world.add_collision_pair(group, unit, None)
 

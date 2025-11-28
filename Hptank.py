@@ -176,7 +176,6 @@ class Hptank:
         return self.x - 50, self.y - 40, self.x + 50, self.y + 40
 
     def handle_collision(self, group, other):
-        # 제거되었거나 Hp <= 0이면 무시
         try:
             if not any(other in layer for layer in game_world.world):
                 return
@@ -188,17 +187,34 @@ class Hptank:
         left, right = (group.split(':') + ['', ''])[:2]
         left = left.strip().upper()
         right = right.strip().upper()
+
+        # 이미 다른 유닛에 의해 저지되었으면 패스
+        if getattr(other, '_blocked_by', None) is not None:
+            return
+
         if (left == 'HPTANK' and right == 'MONSTER') or (left == 'MONSTER' and right == 'HPTANK'):
-            if getattr(self, 'target', None) is other:
-                return
-            self.target = other
-            self.state_machine.handle_state_event(('COLLIDE', group, other))
+            if self.now_stop < self.stop:
+                other._blocked_by = self
+                self.now_stop += 1
+                if getattr(self, 'target', None) is None:
+                    self.target = other
+                try:
+                    self.state_machine.handle_state_event(('COLLIDE', group, other))
+                except Exception:
+                    pass
             return
+
         # fallback
-        if getattr(self, 'target', None) is other:
-            return
-        self.target = other
-        self.state_machine.handle_state_event(('COLLIDE', group, other))
+        if self.now_stop < self.stop:
+            other._blocked_by = self
+            self.now_stop += 1
+            if getattr(self, 'target', None) is None:
+                self.target = other
+            try:
+                self.state_machine.handle_state_event(('COLLIDE', group, other))
+            except Exception:
+                pass
+        return
 
     def update(self):
         self.state_machine.update()

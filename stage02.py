@@ -1,3 +1,4 @@
+import heapq
 import time
 from pico2d import *
 
@@ -26,19 +27,21 @@ RESULT_DURATION = 3.0
 # spawn 관리용 로컬 리스트 (화면의 몬스터 위치 검사용)
 _monsters_list = []
 
-stage_temp = [2, 2, 2, 2, 1, 2, 2, 2,2,2
-             ,2, 2, 2, 2, 1, 2, 2, 2,2,2
-             ,2, 2, 2, 1, 1, 2, 2, 2,2,2
-             ,3, 1, 1, 1, 1, 1, 1, 1,1,4
-             ,2, 2, 2, 1, 2, 2, 2, 2,2,2
-             ,2, 2, 2, 2, 2, 2, 2, 2,2,2
-             ,2, 2, 2, 2, 2, 2, 2, 2,2,2
-             ,2, 2, 2, 2, 2, 2, 2, 2,2,2]
+stage_temp = [2, 2, 2, 2, 1, 2, 2, 1,2,2
+             ,2, 2, 2, 2, 1, 2, 2, 1,2,2
+             ,2, 2, 2, 1, 1, 2, 1, 1,2,2
+             ,2, 1, 1, 1, 1, 1, 1, 1,1,4
+             ,2, 2, 2, 1, 1, 2, 2, 1,2,2
+             ,2, 2, 2, 2, 1, 2, 2, 1,2,2
+             ,2, 2, 2, 2, 1, 2, 2, 1,2,2
+             ,2, 2, 2, 2, 3, 2, 2, 1,2,2]
 
 _spawn_positions = []
 _spawn_index = 0
 _last_spawn_time = 0.0
 _spawn_interval = 4.0  # 초
+_spawn_batch_count = 0  # 현재 스폰 포인트에서 몇 마리 스폰했는지
+
 
 # 이미지/폰트는 캔버스가 준비된 시점에 로드해야 함 -> init()에서 로드
 v_image = None
@@ -57,6 +60,72 @@ def handle_events():
         else:
             if character:
                 character.handle_event(event)
+
+def _grid_neighbors(idx, cols, rows):
+    col = idx % cols
+    row = idx // cols
+    for dc, dr in ((1,0),(-1,0),(0,1),(0,-1)):
+        nc, nr = col+dc, row+dr
+        if 0 <= nc < cols and 0 <= nr < rows:
+            yield nr * cols + nc
+
+def _build_walkable(stage_list):
+    # walkable: 타일 값 1 또는 4(목표), spawn(3)도 통과시작 가능
+    return {i for i, v in enumerate(stage_list) if v in (1,3,4)}
+
+def _dijkstra(start_idx, goals, stage_list, cols=10):
+    rows = len(stage_list) // cols
+    walkable = _build_walkable(stage_list)
+    INF = 10**9
+    dist = {i: INF for i in walkable}
+    prev = {}
+    if start_idx not in walkable:
+        return None  # 경로 없음
+    dist[start_idx] = 0
+    pq = [(0, start_idx)]
+    while pq:
+        d, u = heapq.heappop(pq)
+        if d != dist.get(u, INF):
+            continue
+        if u in goals:
+            # 도착한 목표 중 가장 빠른 것을 찾으면 경로 복원
+            path = []
+            cur = u
+            while True:
+                path.append(cur)
+                if cur == start_idx:
+                    break
+                cur = prev.get(cur)
+                if cur is None:
+                    break
+            path.reverse()
+            return path
+        for v in _grid_neighbors(u, cols, rows):
+            if v not in walkable:
+                continue
+            nd = d + 1
+            if nd < dist.get(v, INF):
+                dist[v] = nd
+                prev[v] = u
+                heapq.heappush(pq, (nd, v))
+    return None
+
+def _tile_index_to_center(idx):
+    cols = 10
+    col = idx % cols
+    row = idx // cols
+    tw, th = Tile.TILE_W, Tile.TILE_H
+    canvas_h = get_canvas_height()
+    cx = col * tw + tw // 2
+    cy = canvas_h - (row * th + th // 2)
+    return cx, cy
+
+def find_path_indices_from(start_idx, stage_list):
+    # 목표 타일 인덱스들(값 4)
+    goals = {i for i, v in enumerate(stage_list) if v == 4}
+    if not goals:
+        return None
+    return _dijkstra(start_idx, goals, stage_list, cols=10)
 
 
 def init():
@@ -102,22 +171,34 @@ def init():
 
 
 def spwan_monster():
-    global _last_spawn_time, _spawn_index, monster_num
+    global _last_spawn_time, _spawn_index, monster_num, _spawn_batch_count, _monsters_list
     if _result_shown:
         return
     now = time.time()
-    # 디버그 출력
-    print(f"[SPAWN_CHECK] monster_num={monster_num}, len(_spawn_positions)={len(_spawn_positions)}, elapsed={now - _last_spawn_time:.2f}s")
     if not _spawn_positions:
-        print("[SPAWN_CHECK] no spawn positions")
         return
     if now - _last_spawn_time >= _spawn_interval and monster_num < 10:
         pos_index = _spawn_positions[_spawn_index]
+
+        # 경로 계산 (타일 인덱스 리스트)
+        path_indices = None
         try:
-            monster = Monster(pos_index)
+            path_indices = find_path_indices_from(pos_index, stage_temp)
+        except Exception as e:
+            print(f"[PATH_WARN] dijkstra failed: {e}")
+            path_indices = None
+
+        # 좌표 경로로 변환
+        path_coords = None
+        if path_indices:
+            path_coords = [_tile_index_to_center(i) for i in path_indices]
+
+        # 몬스터 생성 (Monster ctor에 path 인자 추가)
+        try:
+            # Monster 생성자 변경 시 두번째 인자로 path 전달
+            monster = Monster(pos_index, path=path_coords)
         except Exception as e:
             print(f"[SPAWN_ERROR] Monster ctor failed: {e}")
-            # 실패 시 마지막 시간 갱신하지 않아 즉시 재시도 가능하게 할 수도 있음
             _last_spawn_time = now
             return
 
@@ -127,13 +208,12 @@ def spwan_monster():
             print(f"[SPAWN_ERROR] add_object failed: {e}")
             return
 
-        # 로컬 리스트에 보관 (위치 검사용)
         try:
             _monsters_list.append(monster)
         except Exception as e:
             print(f"[SPAWN_WARN] append to _monsters_list failed: {e}")
 
-        # 충돌쌍 등록 시도 (안전하게)
+        # 기존 충돌쌍 등록 유지
         try:
             if character is not None and hasattr(character, 'unit_map'):
                 for key in character.unit_map.keys():
@@ -148,12 +228,15 @@ def spwan_monster():
         except Exception as e:
             print(f"[SPAWN_WARN] collision pair registration issue: {e}")
 
-        _spawn_index = (_spawn_index + 1) % len(_spawn_positions)
-        _last_spawn_time = now
+        # 배치 카운트 증가 및 7마리 도달 시 다음 스폰 지점으로 전환
+        _spawn_batch_count += 1
+        if _spawn_batch_count >= 7:
+            _spawn_batch_count = 0
+            _spawn_index = (_spawn_index + 1) % len(_spawn_positions)
 
-        # 몬스터 카운트는 등록이 성공한 뒤에 증가
+        _last_spawn_time = now
         monster_num += 1
-        print(f"[SPAWN_OK] spawned at pos {pos_index}, new monster_num={monster_num}")
+        print(f"[SPAWN_OK] spawned at pos {pos_index}, path_len={(len(path_indices) if path_indices else 0)}, new monster_num={monster_num}")
 
 
 def _check_defeat_by_monster_enter_goal():
@@ -210,7 +293,7 @@ def update():
     _check_defeat_by_monster_enter_goal()
 
     # 승리(처치 수) 검사
-    if not _result_shown and killed_monster >= 10:
+    if not _result_shown and killed_monster >= 14:
         _result_shown = True
         _result_start_time = time.time()
         _result_type = 'v'

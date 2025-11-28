@@ -1,11 +1,18 @@
 world = [[], [], [], [], [], [], [], []] # layers for game objects
 
 def add_object(o, depth):
-    world[depth].append(o)
+    try:
+        nd = int(max(0, min(int(depth), len(world) - 1)))
+    except Exception:
+        nd = 0
+    world[nd].append(o)
 
 def add_objects(ol, depth):
-    world[depth] += ol
-
+    try:
+        nd = int(max(0, min(int(depth), len(world) - 1)))
+    except Exception:
+        nd = 0
+    world[nd] += ol
 def remove_object(o):
     for layer in world:
         if o in layer:
@@ -84,11 +91,13 @@ def add_collision_pair(group, a, b):
     if group not in collision_pairs:
         print(f'Added new group {group}')
         collision_pairs[group] = [[],[]]
+    # 중복 방지하여 추가
     if a:
-        collision_pairs[group][0].append(a)
+        if a not in collision_pairs[group][0]:
+            collision_pairs[group][0].append(a)
     if b:
-        collision_pairs[group][1].append(b)
-
+        if b not in collision_pairs[group][1]:
+            collision_pairs[group][1].append(b)
     return None
 
 def handle_collisions():
@@ -193,3 +202,16 @@ def handle_collisions():
                 except Exception:
                     # 안전하게 무시하되 상태 정리 필요 시 정리
                     pass
+def change_object_depth(o, new_depth):
+    """객체를 안전하게 다른 depth(레이어)로 이동시킴."""
+    try:
+        nd = int(max(0, min(new_depth, len(world) - 1)))
+        # 현재 레이어에서 제거 (있다면)
+        for layer in world:
+            if o in layer:
+                layer.remove(o)
+                break
+        # 새 레이어에 추가
+        world[nd].append(o)
+    except Exception:
+        pass
