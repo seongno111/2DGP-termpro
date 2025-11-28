@@ -212,7 +212,6 @@ class Character:
                     stage_module = sys.modules[mod_name]
                     break
             if stage_module is None:
-                # fallback: 기존에 import 해둔 stage01 사용
                 stage_module = stage01
 
             if not hasattr(stage_module, 'stage_temp') or len(stage_module.stage_temp) == 0:
@@ -242,7 +241,8 @@ class Character:
             candidate_depth = unit_cls().depth
             print(f"DEBUG: tile_depth={tile_depth}, candidate_depth={candidate_depth}, idx={idx}")
 
-            if tile_depth != candidate_depth:
+            # 허용 규칙: 동일 깊이는 항상 허용, 추가로 'candidate_depth == 0' 인 유닛은 tile_depth == 4 에도 배치 가능하게 함
+            if not (tile_depth == candidate_depth or (candidate_depth == 0 and tile_depth == 4)):
                 print("Depth mismatch -> cannot place here")
                 return False
 
@@ -256,7 +256,15 @@ class Character:
             unit._placed_key = placed_key
             unit._placed_idx = idx
 
-            game_world.add_object(unit, (get_canvas_height() - my) // 100)
+            # 배치된 타일의 깊이를 기록 (heal 조건 등에서 사용)
+            unit._placed_on_depth = tile_depth
+            # 깊이 4에 배치되었을 때 회복을 활성화할 수 있도록 초기값 설정
+            if tile_depth == 4:
+                unit._depth4_heal = True
+                unit._depth4_heal_timer = 0.0
+
+            unit_depth = int((get_canvas_height() - my) // 100)
+            game_world.add_object(unit, unit_depth)
 
             group = f'{unit.__class__.__name__.upper()}:MONSTER'
             game_world.add_collision_pair(group, unit, None)

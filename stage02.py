@@ -30,7 +30,7 @@ _monsters_list = []
 stage_temp = [2, 2, 2, 2, 1, 2, 2, 1,2,2
              ,2, 2, 2, 2, 1, 2, 2, 1,2,2
              ,2, 2, 2, 1, 1, 2, 1, 1,2,2
-             ,2, 1, 1, 1, 1, 1, 1, 1,1,4
+             ,2, 1, 1, 1, 5, 1, 1, 1,1,4
              ,2, 2, 2, 1, 1, 2, 2, 1,2,2
              ,2, 2, 2, 2, 1, 2, 2, 1,2,2
              ,2, 2, 2, 2, 1, 2, 2, 1,2,2
@@ -41,7 +41,7 @@ _spawn_index = 0
 _last_spawn_time = 0.0
 _spawn_interval = 4.0  # 초
 _spawn_batch_count = 0  # 현재 스폰 포인트에서 몇 마리 스폰했는지
-
+special_roc = 34
 
 # 이미지/폰트는 캔버스가 준비된 시점에 로드해야 함 -> init()에서 로드
 v_image = None
@@ -71,7 +71,7 @@ def _grid_neighbors(idx, cols, rows):
 
 def _build_walkable(stage_list):
     # walkable: 타일 값 1 또는 4(목표), spawn(3)도 통과시작 가능
-    return {i for i, v in enumerate(stage_list) if v in (1,3,4)}
+    return {i for i, v in enumerate(stage_list) if v in (1,3,4,5)}
 
 def _dijkstra(start_idx, goals, stage_list, cols=10):
     rows = len(stage_list) // cols
@@ -139,6 +139,7 @@ def init():
         v_image = load_image('victory.png')
     if d_image is None:
         d_image = load_image('defeat.png')
+
     if font is None:
         font = load_font('ENCR10B.TTF', 20)
 
@@ -148,6 +149,9 @@ def init():
             game_world.add_object(tile[i],  i//10)
         elif stage_temp[i] == 4:
             tile.append(Tile(i, 3))
+            game_world.add_object(tile[i], i//10)
+        elif stage_temp[i] == 5:
+            tile.append(Tile(i, 4))
             game_world.add_object(tile[i], i//10)
         else:
             tile.append(Tile(i, stage_temp[i]-1))
@@ -275,10 +279,8 @@ def update():
 
     # 결과 표시 중이면 스테이지 진행을 멈추고 시간만 체크
     if _result_shown:
-        # 시작 시간이 미설정이면 지금으로 설정
         if _result_start_time == 0.0:
             _result_start_time = now
-        # 지정 시간 경과 시 메인으로 전환 (스테이지는 멈춘 상태 유지)
         if now - _result_start_time >= RESULT_DURATION:
             # 결과 초기화 및 씬 전환
             _result_shown = False
@@ -300,12 +302,39 @@ def update():
 
     game_world.update()
 
+    HEAL_PER_SEC = 20.0
+    try:
+        import game_framework as gf
+        ft = getattr(gf, 'frame_time', 0.0)
+    except Exception:
+        ft = 0.0
+    if ft > 0.0:
+        try:
+            # game_world.world는 레이어 리스트
+            for layer in list(game_world.world):
+                for obj in list(layer):
+                    try:
+                        if getattr(obj, '_placed_on_depth', None) == 4 and getattr(obj, 'Hp', None) is not None:
+                            max_hp = getattr(obj, 'max_hp', None)
+                            if max_hp is None:
+                                # 일부 클래스는 max_hp 대신 max_hp (fallback handled)
+                                max_hp = getattr(obj, 'max_hp', getattr(obj, 'MaxHp', None))
+                            if max_hp is None:
+                                continue
+                            new_hp = getattr(obj, 'Hp', 0) + HEAL_PER_SEC * ft
+                            # clamp to max_hp
+                            obj.Hp = min(new_hp, max_hp)
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
+
 def draw():
     clear_canvas()
 
     game_world.render()
 
-    # 결과 이미지 오버레이(중앙 표시), 크기 87x81
     if _result_shown and _result_type is not None:
         cx = get_canvas_width() // 2
         cy = get_canvas_height() // 2
@@ -323,3 +352,5 @@ def finish():
     v_image = None
     d_image = None
     font = None
+
+
