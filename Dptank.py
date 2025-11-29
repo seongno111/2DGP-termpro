@@ -26,49 +26,165 @@ class Idle:
             self.dptank.image[int(self.dptank.frame)].clip_draw(0, 0, 100, 100, x, y, 150, 160)
         else:
             self.dptank.image[int(self.dptank.frame)].clip_composite_draw(0, 0, 100, 100, 0, 'h', x, y, 150, 160)
-
+# python
+# python
 class Attack:
     def __init__(self, dptank):
         self.dptank = dptank
         self.attack_timer = 0.0
+
     def enter(self, e):
         self.dptank.frame = 0
         self.attack_timer = 0.0
         if isinstance(e, tuple) and len(e) >= 3:
             self.dptank.target = e[2]
+
+    def _collect_objects(self):
+        # 우선적으로 game_world.world 플래트닝 사용
+        try:
+            if hasattr(game_world, 'world'):
+                return [o for layer in game_world.world for o in layer]
+        except Exception:
+            pass
+        # 기존 시도들 (호환성)
+        objs = None
+        if hasattr(game_world, 'get_objects') and callable(getattr(game_world, 'get_objects')):
+            try:
+                objs = game_world.get_objects()
+            except Exception:
+                objs = None
+        if objs is None and hasattr(game_world, 'objects'):
+            objs = getattr(game_world, 'objects')
+        if objs is None and hasattr(game_world, 'all_objects'):
+            objs = getattr(game_world, 'all_objects')
+        return objs
+
+    def _find_blocked_target(self):
+        objs = self._collect_objects()
+        if not objs:
+            return None
+        for o in list(objs):
+            if o is None or o is self.dptank:
+                continue
+            if getattr(o, '_blocked_by', None) is self.dptank and getattr(o, 'Hp', 1) > 0:
+                if game_world.in_attack_range(self.dptank, o):
+                    return o
+        return None
+
+    def _bb_overlap(self, a_bb, b_bb):
+        la, ba, ra, ta = a_bb
+        lb, bb, rb, tb = b_bb
+        return not (ra < lb or la > rb or ta < bb or ba > tb)
+
+    def _find_colliding_target(self):
+        objs = self._collect_objects()
+        if not objs:
+            return None
+        my_bb = None
+        if hasattr(self.dptank, 'get_bb'):
+            try:
+                my_bb = self.dptank.get_bb()
+            except Exception:
+                my_bb = None
+        for o in list(objs):
+            if o is None or o is self.dptank:
+                continue
+            if getattr(o, 'Hp', 0) <= 0:
+                continue
+            if not hasattr(o, 'get_bb'):
+                continue
+            try:
+                if my_bb is None:
+                    my_bb = self.dptank.get_bb()
+                if self._bb_overlap(my_bb, o.get_bb()) and game_world.in_attack_range(self.dptank, o):
+                    return o
+            except Exception:
+                continue
+        return None
+
     def exit(self, e):
         self.dptank.frame = 0
         self.attack_timer = 0.0
+
     def do(self):
         self.dptank.frame = (self.dptank.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 4
         target = getattr(self.dptank, 'target', None)
-        # 타겟 없거나 범위 밖이면 복귀
+
+        # 타겟이 없거나 범위 밖이면 후보 찾기
         if target is None or not game_world.in_attack_range(self.dptank, target):
-            self.dptank.state_machine.handle_state_event(('SEPARATE', None))
-            return
+            new_target = self._find_blocked_target()
+            if new_target is None:
+                new_target = self._find_colliding_target()
+            if new_target is not None:
+                self.dptank.target = new_target
+                target = new_target
+            else:
+                self.dptank.state_machine.handle_state_event(('SEPARATE', None))
+                return
+
         ATTACK_INTERVAL = 0.8
         self.attack_timer += game_framework.frame_time
         if self.attack_timer >= ATTACK_INTERVAL:
             self.attack_timer -= ATTACK_INTERVAL
             dmg = max(0, self.dptank.Atk - getattr(target, 'Def', 0))
-            target.Hp -= dmg
+            try:
+                target.Hp -= dmg
+            except Exception:
+                pass
             print(f'Dptank attacked Monster dmg={dmg} target_hp={getattr(target, "Hp", "?")}')
             if getattr(target, 'Hp', 1) <= 0:
                 print(f'{target.__class__.__name__} died by Dptank.')
+                # 먼저 가능하면 target.die() 호출해서 몬스터 쪽 정리(특히 blocked 감소) 처리
                 try:
-                    game_world.remove_object(target)
-                    target.die()
+                    if hasattr(target, 'die'):
+                        target.die()
+                    else:
+                        # fallback: 직접 제거
+                        try:
+                            game_world.remove_object(target)
+                        except Exception:
+                            pass
+                        try:
+                            game_world.remove_collision_object(target)
+                        except Exception:
+                            pass
+                        # 제거 시 now_stop 정리 (대상이 나를 막고 있었으면 감소)
+                        try:
+                            if getattr(target, '_blocked_by', None) is self.dptank:
+                                target._blocked_by = None
+                                self.dptank.now_stop = max(0, self.dptank.now_stop - 1)
+                        except Exception:
+                            pass
                 except Exception:
-                    pass
-                try:
-                    game_world.remove_collision_object(target)
-                except Exception:
-                    pass
-                # 타겟 정리 및 상태 복귀
-                self.dptank.target = None
-                self.dptank.state_machine.handle_state_event(('SEPARATE', None))
+                    # 안전하게 보정 시도
+                    try:
+                        if getattr(target, '_blocked_by', None) is self.dptank:
+                            target._blocked_by = None
+                            self.dptank.now_stop = max(0, self.dptank.now_stop - 1)
+                    except Exception:
+                        pass
+
+                # 죽인 뒤 다른 충돌 대상(블록된 대상 우선, 없으면 실제 충돌중인 대상) 있으면 전환, 없으면 SEPARATE
+                next_target = self._find_blocked_target()
+                if next_target is None:
+                    next_target = self._find_colliding_target()
+                if next_target:
+                    # 새 타겟이 아직 blocked_by가 없다면 강제로 설정(중복 카운트 방지)
+                    try:
+                        if getattr(next_target, '_blocked_by', None) is None:
+                            next_target._blocked_by = self.dptank
+                            # only increment now_stop if it wasn't counted already
+                            # (we can't know previous state reliably, so try to keep safe)
+                            self.dptank.now_stop = min(self.dptank.stop, self.dptank.now_stop + 1)
+                    except Exception:
+                        pass
+                    self.dptank.target = next_target
+                    self.attack_timer = 0.0
+                else:
+                    self.dptank.target = None
+                    self.dptank.state_machine.handle_state_event(('SEPARATE', None))
+
     def draw(self):
-        # Dptank에 별도 공격 이미지가 없으므로 기본 draw 사용
         x = self.dptank.x
         y = self.dptank.y + 50
         if getattr(self.dptank, 'face_dir', 0) == 0:
@@ -90,7 +206,7 @@ class Dptank:
         self.x, self.y = 0, 0
         self.frame = 0
         self.face_dir = 0
-        self.stop = 3
+        self.stop = 4
         self.now_stop = 0
         self.max_hp = 1500
         self.Hp = 1000

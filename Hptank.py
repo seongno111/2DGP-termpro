@@ -39,6 +39,29 @@ class Attack:
     def exit(self, e):
         self.hptank.frame = 0
         self.attack_timer = 0.0
+        # 정리: 타겟이 이 Hptank에 의해 저지된 상태면 카운트 감소 및 링크 해제
+        try:
+            tgt = getattr(self.hptank, 'target', None)
+            if tgt is not None and getattr(tgt, '_blocked_by', None) is self.hptank:
+                try:
+                    self.hptank.now_stop = max(0, self.hptank.now_stop - 1)
+                except Exception:
+                    pass
+                try:
+                    tgt._blocked_by = None
+                except Exception:
+                    pass
+                try:
+                    if getattr(tgt, 'target', None) is self.hptank:
+                        tgt.target = None
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        try:
+            self.hptank.target = None
+        except Exception:
+            pass
     def do(self):
         self.hptank.frame = (self.hptank.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 5
         target = getattr(self.hptank, 'target', None)
@@ -111,7 +134,7 @@ class Hptank:
         self.x, self.y = 0, 0
         self.frame = 0
         self.face_dir = 0
-        self.stop = 3
+        self.stop = 4
         self.now_stop = 0
         self.max_hp = 2000
         self.Hp = 2000

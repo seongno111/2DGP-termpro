@@ -42,8 +42,33 @@ class Attack:
             self.knight.target = e[2]
         # else target might already be set in handle_collision
     def exit(self, e):
+        # 기본 초기화
         self.knight.frame = 0
         self.attack_timer = 0.0
+        # 정리: 타겟이 이 Knight에 의해 저지된 상태면 카운트 감소 및 링크 해제
+        try:
+            tgt = getattr(self.knight, 'target', None)
+            if tgt is not None and getattr(tgt, '_blocked_by', None) is self.knight:
+                try:
+                    self.knight.now_stop = max(0, self.knight.now_stop - 1)
+                except Exception:
+                    pass
+                try:
+                    tgt._blocked_by = None
+                except Exception:
+                    pass
+                try:
+                    if getattr(tgt, 'target', None) is self.knight:
+                        tgt.target = None
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        # 대상 참조 해제
+        try:
+            self.knight.target = None
+        except Exception:
+            pass
     def do(self):
         # 애니 프레임 업데이트
         self.knight.frame = (self.knight.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 5
@@ -79,6 +104,7 @@ class Attack:
     def draw(self):
         x = self.knight.x
         y = self.knight.y + 50
+        # face_dir == 0 -> 오른쪽, 1 -> 왼쪽(수평 반전)
         if getattr(self.knight, 'face_dir', 0) == 0 or getattr(self.knight, 'face_dir', 0) == 2:
             self.knight.image[int(self.knight.frame)+1].clip_draw(0, 0, 100, 100, x, y, 150, 160)
             if self.knight.frame >= 3:
@@ -87,7 +113,6 @@ class Attack:
             self.knight.image[int(self.knight.frame)+1].clip_composite_draw(0, 0, 100, 100, 0, 'h', x, y, 150, 160)
             if self.knight.frame >= 3:
                 self.knight.image_at[int(self.knight.frame)-3].clip_composite_draw(0, 0,  124, 117, 0, 'h', x-50, y-20, 150, 160)
-
 class Knight:
     image = []
     image_at = []
@@ -105,7 +130,7 @@ class Knight:
         self.now_stop = 0
         self.Hp = 500
         self.Def = 50
-        self.Atk = 10
+        self.Atk = 100
         self.number = 1
         self.tile_w = 100
         self.tile_h = 100

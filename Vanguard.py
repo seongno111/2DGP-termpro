@@ -44,6 +44,29 @@ class Attack:
     def exit(self, e):
         self.vanguard.frame = 0
         self.attack_timer = 0.0
+        # 정리: 타겟이 이 Vanguard에 의해 저지된 상태면 카운트 감소 및 링크 해제
+        try:
+            tgt = getattr(self.vanguard, 'target', None)
+            if tgt is not None and getattr(tgt, '_blocked_by', None) is self.vanguard:
+                try:
+                    self.vanguard.now_stop = max(0, self.vanguard.now_stop - 1)
+                except Exception:
+                    pass
+                try:
+                    tgt._blocked_by = None
+                except Exception:
+                    pass
+                try:
+                    if getattr(tgt, 'target', None) is self.vanguard:
+                        tgt.target = None
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        try:
+            self.vanguard.target = None
+        except Exception:
+            pass
     def do(self):
         # 애니 프레임 업데이트
         self.vanguard.frame = (self.vanguard.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 5
@@ -76,7 +99,6 @@ class Attack:
                 # 타겟 비우고 상태 복귀
                 self.vanguard.target = None
                 self.vanguard.state_machine.handle_state_event(('SEPARATE', None))
-
     def draw(self):
         x = self.vanguard.x
         y = self.vanguard.y + 50
@@ -105,7 +127,7 @@ class Vanguard:
         self.x, self.y = 0, 0
         self.frame = 0
         self.face_dir = 0
-        self.stop = 1
+        self.stop = 2
         self.now_stop = 0
         self.max_hp = 700
         self.Hp = 700
