@@ -67,9 +67,11 @@ class Attack:
             self.vanguard.target = None
         except Exception:
             pass
+
     def do(self):
         # 애니 프레임 업데이트
-        self.vanguard.frame = (self.vanguard.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 5
+        self.vanguard.frame = (
+                                          self.vanguard.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 5
         target = getattr(self.vanguard, 'target', None)
         # 충돌이 끊기거나 타겟이 없으면 SEPARATE 이벤트 발생
         # 기존 game_world.collide 대신 game_world.in_attack_range 사용
@@ -78,12 +80,44 @@ class Attack:
             return
         # 공격 간격
         ATTACK_INTERVAL = 0.8
+        if self.vanguard.skill > 0:
+            ATTACK_INTERVAL = 0.4
         self.attack_timer += game_framework.frame_time
         if self.attack_timer >= ATTACK_INTERVAL:
             self.attack_timer -= ATTACK_INTERVAL
             dmg = max(0, self.vanguard.Atk - getattr(target, 'Def', 0))
             target.Hp -= dmg
             print(f'Knight attacked Monster dmg={dmg} target_hp={getattr(target, "Hp", "?")}')
+
+            # skill이 있는 상태라면 플레이어 cost를 1 증가시킴
+            if self.vanguard.skill > 0:
+                try:
+                    import sys
+                    char = None
+                    for mod_name in ('stage02', 'stage01'):
+                        mod = sys.modules.get(mod_name)
+                        if mod:
+                            c = getattr(mod, 'character', None)
+                            if c is not None:
+                                char = c
+                                break
+                    if char is None:
+                        import game_world as _gw
+                        for layer in getattr(_gw, 'world', []):
+                            for obj in list(layer):
+                                if getattr(obj, '__class__', None) and obj.__class__.__name__ == 'Character':
+                                    char = obj
+                                    break
+                            if char:
+                                break
+                    if char is not None:
+                        try:
+                            char.cost += 1
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+
             if getattr(target, 'Hp', 1) <= 0:
                 print(f'{target.__class__.__name__} died by Vanguard.')
                 # 몬스터 제거 및 충돌 제거
@@ -117,6 +151,7 @@ class Attack:
 class Vanguard:
     image = []
     image_at = []
+    image_s = None
     for i in range(8):
         image.append(None)
     for i in range(3):
@@ -133,6 +168,8 @@ class Vanguard:
         self.Hp = 700
         self.Def = 10
         self.Atk = 60
+        self.skill = 15
+        self._skill_timer = 0.0
         self.number = 6
         self.tile_w = 100
         self.tile_h = 100
@@ -161,6 +198,8 @@ class Vanguard:
             except Exception:
                 # 파일이 없으면 비어둠
                 self.image_at = []
+        if self.image_s is None:
+            self.image_s = load_image('asha_skill.png')
 
         self.IDLE = Idle(self)
         self.ATK = Attack(self)
@@ -201,11 +240,27 @@ class Vanguard:
 
     def draw(self):
         self.state_machine.draw()
+        if self.skill > 0:
+            self.image_s.clip_draw(0, 0, 129, 136, self.x, self.y + 90, 100, 100)
         for i in range(int((self.Hp/self.max_hp)*100//10)):
             self.font.draw(self.x-50+i*10, self.y+80, f'/', (100, 250, 100))
 
     def update(self):
         self.state_machine.update()
+        # frame_time 누적으로 1초마다 skill 감소
+        try:
+            dt = game_framework.frame_time
+        except Exception:
+            dt = 0.0
+
+        if dt > 0.0:
+            self._skill_timer += dt
+            if self.skill > 0:
+                dec = int(self._skill_timer)
+                if dec > 0:
+                    self.skill = max(0.0, self.skill - dec)
+                    self._skill_timer -= dec
+
 
     def get_bb(self):
         return self.x - 50, self.y - 40, self.x + 50, self.y + 40
