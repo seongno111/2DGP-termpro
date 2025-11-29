@@ -175,13 +175,13 @@ def init():
 
 
 def spwan_monster():
-    global _last_spawn_time, _spawn_index, monster_num, _spawn_batch_count, _monsters_list
+    global _last_spawn_time, _spawn_index, monster_num, _monsters_list
     if _result_shown:
         return
     now = time.time()
     if not _spawn_positions:
         return
-    if now - _last_spawn_time >= _spawn_interval and monster_num < 10:
+    if now - _last_spawn_time >= _spawn_interval and monster_num < 14:
         pos_index = _spawn_positions[_spawn_index]
 
         # 경로 계산 (타일 인덱스 리스트)
@@ -199,7 +199,6 @@ def spwan_monster():
 
         # 몬스터 생성 (Monster ctor에 path 인자 추가)
         try:
-            # Monster 생성자 변경 시 두번째 인자로 path 전달
             monster = Monster(pos_index, path=path_coords)
         except Exception as e:
             print(f"[SPAWN_ERROR] Monster ctor failed: {e}")
@@ -232,10 +231,8 @@ def spwan_monster():
         except Exception as e:
             print(f"[SPAWN_WARN] collision pair registration issue: {e}")
 
-        # 배치 카운트 증가 및 7마리 도달 시 다음 스폰 지점으로 전환
-        _spawn_batch_count += 1
-        if _spawn_batch_count >= 7:
-            _spawn_batch_count = 0
+        # 라운드로빈: 한 번 스폰할 때마다 다음 스폰 위치로 이동
+        if _spawn_positions:
             _spawn_index = (_spawn_index + 1) % len(_spawn_positions)
 
         _last_spawn_time = now

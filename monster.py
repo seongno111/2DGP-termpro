@@ -296,7 +296,6 @@ class Monster:
                 game_world.remove_collision_object(self)
             except Exception:
                 pass
-
     def die(self):
         try:
             blocked = getattr(self, '_blocked_by', None)
@@ -304,9 +303,11 @@ class Monster:
                 blocked.now_stop = max(0, blocked.now_stop - 1)
         except Exception:
             pass
+
         if self.removed:
             return
         self.removed = True
+
         try:
             game_world.remove_object(self)
         except Exception:
@@ -316,16 +317,49 @@ class Monster:
                         layer.remove(self)
             except Exception:
                 pass
+
         try:
             game_world.remove_collision_object(self)
         except Exception:
             pass
+
+        # 활성 스테이지 모듈을 찾아 해당 killed_monster 증가
         try:
-            import stage01
-            stage01.killed_monster += 1
-            print(f'[MONSTER_DIE] killed_monster={stage01.killed_monster}')
+            import sys
+            incremented = False
+            for mod_name in ('stage01', 'stage02'):
+                mod = sys.modules.get(mod_name)
+                if not mod:
+                    continue
+                ch = getattr(mod, 'character', None)
+                if ch is None:
+                    continue
+                try:
+                    in_world = any(ch in layer for layer in game_world.world)
+                except Exception:
+                    in_world = False
+                if in_world:
+                    try:
+                        mod.killed_monster = getattr(mod, 'killed_monster', 0) + 1
+                        print(f'[MONSTER_DIE] {mod_name}.killed_monster={mod.killed_monster}')
+                        incremented = True
+                        break
+                    except Exception:
+                        pass
+
+            if not incremented:
+                # 폴백: stage02 먼저, 없으면 stage01
+                for fb in ('stage02', 'stage01'):
+                    try:
+                        mod = __import__(fb)
+                        mod.killed_monster = getattr(mod, 'killed_monster', 0) + 1
+                        print(f'[MONSTER_DIE] fallback {fb}.killed_monster={mod.killed_monster}')
+                        break
+                    except Exception:
+                        pass
         except Exception:
             pass
+
         try:
             if hasattr(self, 'state_machine') and self.state_machine is not None:
                 self.state_machine = None

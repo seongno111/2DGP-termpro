@@ -195,7 +195,6 @@ class Knight:
         return self.x - 40, self.y - 40, self.x + 40, self.y + 40
 
     def update(self):
-        print(self.now_stop)
         self.state_machine.update()
 
     def handle_event(self, event):
