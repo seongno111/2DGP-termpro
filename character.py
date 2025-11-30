@@ -369,5 +369,58 @@ class Character:
                 top = self.p_y + 50
                 draw_rectangle(left, bottom, right, top)
 
+    # python
     def handle_event(self, event):
-        self.state_machine.handle_state_event(('INPUT', event))
+        """
+        마우스 왼쪽 버튼 다운 시 Idle 상태에서 모든 유닛의 스킬 버튼 영역을 검사하여
+        해당 유닛의 skill이 10이면 skill_state를 True로 설정한다.
+        """
+        try:
+            # 왼쪽 마우스 버튼 다운 감지
+            if getattr(event, 'type', None) == SDL_MOUSEBUTTONDOWN and getattr(event, 'button',
+                                                                               None) == SDL_BUTTON_LEFT:
+                mx, my = _get_mouse_pos(event)
+
+                # Character가 Idle 상태일 때만 동작하도록 시도해서 확인
+                sm = getattr(self, 'state_machine', None)
+                cur_state = None
+                if sm is not None:
+                    # StateMachine 구현 차이에 대비해 여러 속성명 허용
+                    cur_state = getattr(sm, 'state', None) or getattr(sm, 'current_state', None) or getattr(sm,
+                                                                                                            'cur_state',
+                                                                                                            None)
+
+                # 현재 상태가 Idle 인지 확인
+                if cur_state is self.IDLE:
+                    # game_world의 모든 레이어/객체를 순회
+                    for layer in getattr(game_world, 'world', []):
+                        for obj in list(layer):
+                            if obj is None:
+                                continue
+                            # 필요한 속성들이 있는지 확인
+                            if not (hasattr(obj, 'x') and hasattr(obj, 'y') and hasattr(obj, 'skill') and hasattr(obj,
+                                                                                                                  'skill_state')):
+                                continue
+                            # 스킬이 10이 아닌 경우 통과
+                            if getattr(obj, 'skill', 0) != 10:
+                                continue
+
+                            left = obj.x - 10
+                            right = obj.x + 10
+                            bottom = obj.y + 90
+                            top = obj.y + 110
+
+                            # 클릭이 해당 영역 안에 들어오면 skill_state 활성화
+                            if left <= mx <= right and bottom <= my <= top:
+                                try:
+                                    obj.skill_state = True
+                                except Exception:
+                                    pass
+        except Exception:
+            pass
+
+        # 원래 동작 유지: 상태 머신에 이벤트 전달
+        try:
+            self.state_machine.handle_state_event(('INPUT', event))
+        except Exception:
+            pass
