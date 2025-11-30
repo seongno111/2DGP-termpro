@@ -1,5 +1,5 @@
-from pico2d import load_image, draw_rectangle, load_font
-
+from pico2d import load_image, draw_rectangle, load_font, get_canvas_height
+from sdl2 import SDL_BUTTON_LEFT, SDL_MOUSEBUTTONDOWN
 import game_framework
 import game_world
 from state_machine import StateMachine
@@ -19,6 +19,8 @@ class Idle:
         pass
     def do(self):
         self.knight.frame = (self.knight.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 2
+        if self.knight.skill_state is True:
+            self.knight.skill_frame = (self.knight.skill_frame + FRAMES_PER_ACTION * (ACTION_PER_TIME+2) * game_framework.frame_time) % 5
         pass
     def draw(self):
         x = self.knight.x
@@ -29,6 +31,10 @@ class Idle:
         else:
             # 'h' 플래그로 수평 반전
             self.knight.image[int(self.knight.frame)].clip_composite_draw(0, 0, 100, 100, 0, 'h', x, y, 150, 160)
+        if self.knight.skill_state is True:
+            self.knight.image_sk[int(self.knight.skill_frame)].clip_draw(0, 0, 128, 55, x+10, y-70,
+                                                                       100, 40)
+
 
 class Attack:
     def __init__(self, knight):
@@ -72,6 +78,8 @@ class Attack:
     def do(self):
         # 애니 프레임 업데이트
         self.knight.frame = (self.knight.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 5
+        if self.knight.skill_state is True:
+            self.knight.skill_frame = (self.knight.skill_frame + FRAMES_PER_ACTION * (ACTION_PER_TIME+2) * game_framework.frame_time) % 5
         target = getattr(self.knight, 'target', None)
         # 충돌이 끊기거나 타겟이 없으면 SEPARATE 이벤트 발생
         # 기존 game_world.collide 대신 game_world.in_attack_range 사용
@@ -113,17 +121,27 @@ class Attack:
             self.knight.image[int(self.knight.frame)+1].clip_composite_draw(0, 0, 100, 100, 0, 'h', x, y, 150, 160)
             if self.knight.frame >= 3:
                 self.knight.image_at[int(self.knight.frame)-3].clip_composite_draw(0, 0,  124, 117, 0, 'h', x-50, y-20, 150, 160)
+
+        if self.knight.skill_state is True:
+            self.knight.image_sk[int(self.knight.skill_frame)].clip_draw(0, 0, 128, 55, x + 10, y - 70,
+                                                                         100, 40)
+
+
 class Knight:
     image = []
     image_at = []
+    image_sk = []
     for i in range(8):
         image.append(None)
     for i in range(3):
         image_at.append(None)
+    for i in range(6):
+        image_sk.append(None)
     def __init__(self):
         self.depth = 0
         self.x, self.y = 0, 0
         self.frame = 0
+        self.skill_frame = 0
         self.face_dir = 0 # 0오른쪽, 1왼쪽, 2위, 3아래
         self.max_hp = 1000
         self.stop = 3
@@ -131,8 +149,9 @@ class Knight:
         self.Hp = 500
         self.Def = 50
         self.Atk = 100
-        self.skill = 0
+        self.skill = 10
         self._skill_timer = 0.0
+        self.skill_state = False
         self.number = 1
         self.tile_w = 100
         self.tile_h = 100
@@ -151,6 +170,13 @@ class Knight:
             self.image_at[0] = load_image('k_at_ef_01.png')
             self.image_at[1] = load_image('k_at_ef_02.png')
             self.image_at[2] = load_image('k_at_ef_03.png')
+        if self.image_sk[0] is None:
+            self.image_sk[0] = load_image('tuar_skill01.png')
+            self.image_sk[1] = load_image('tuar_skill02.png')
+            self.image_sk[2] = load_image('tuar_skill03.png')
+            self.image_sk[3] = load_image('tuar_skill04.png')
+            self.image_sk[4] = load_image('tuar_skill05.png')
+
         self.IDLE = Idle(self)
         self.ATK = Attack(self)
 
@@ -192,8 +218,8 @@ class Knight:
         self.state_machine.draw()
         for i in range(int((self.Hp/1000)*100//10)):
             self.font.draw(self.x-50+i*10, self.y+80, f'/', (100, 250, 100))
-        if self.skill is 10:
-
+        if self.skill == 10:
+            draw_rectangle(self.x-10, self.y+90, self.x+10, self.y+110, 255, 215, 0, 3, True)
     def get_bb(self):
         return self.x - 40, self.y - 40, self.x + 40, self.y + 40
 
@@ -205,7 +231,7 @@ class Knight:
         except Exception:
             dt = 0.0
 
-        if dt > 0.0:
+        if dt > 0.0 and self.skill_state is False:
             self._skill_timer += dt
             if self.skill < 10:
                 dec = int(self._skill_timer)
@@ -215,7 +241,7 @@ class Knight:
         print(self.skill)
 
     def handle_event(self, event):
-        self.state_machine.handle_state_event(('INPUT',event))
+        self.state_machine.handle_state_event(('INPUT', event))
 
     def handle_collision(self, group, other):
         left, right = (group.split(':') + ['', ''])[:2]
