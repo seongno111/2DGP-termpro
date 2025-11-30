@@ -131,6 +131,8 @@ class Knight:
         self.Hp = 500
         self.Def = 50
         self.Atk = 100
+        self.skill = 0
+        self._skill_timer = 0.0
         self.number = 1
         self.tile_w = 100
         self.tile_h = 100
@@ -190,12 +192,27 @@ class Knight:
         self.state_machine.draw()
         for i in range(int((self.Hp/1000)*100//10)):
             self.font.draw(self.x-50+i*10, self.y+80, f'/', (100, 250, 100))
+        if self.skill is 10:
 
     def get_bb(self):
         return self.x - 40, self.y - 40, self.x + 40, self.y + 40
 
     def update(self):
         self.state_machine.update()
+        # frame_time 누적으로 1초마다 skill 감소
+        try:
+            dt = game_framework.frame_time
+        except Exception:
+            dt = 0.0
+
+        if dt > 0.0:
+            self._skill_timer += dt
+            if self.skill < 10:
+                dec = int(self._skill_timer)
+                if dec > 0:
+                    self.skill = max(0.0, self.skill + dec)
+                    self._skill_timer -= dec
+        print(self.skill)
 
     def handle_event(self, event):
         self.state_machine.handle_state_event(('INPUT',event))
