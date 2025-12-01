@@ -231,13 +231,20 @@ class Knight:
         except Exception:
             dt = 0.0
 
-        if dt > 0.0 and self.skill_state is False:
+        if self.skill_state is True:
             self._skill_timer += dt
-            if self.skill < 10:
-                dec = int(self._skill_timer)
-                if dec > 0:
-                    self.skill = max(0.0, self.skill + dec)
-                    self._skill_timer -= dec
+            while self._skill_timer >= 1.0 and self.skill > 0:
+                self.skill = max(0, self.skill - 1)
+                self._skill_timer -= 1.0
+                if self.skill == 0:
+                    self.skill_state = False
+
+        else:
+            self._skill_timer += dt
+            while self._skill_timer >= 1.0 and self.skill < 10:
+                self.skill = min(10, self.skill + 1)
+                self._skill_timer -= 1.0
+
         print(self.skill)
 
     def handle_event(self, event):
