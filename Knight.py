@@ -20,20 +20,19 @@ class Idle:
     def do(self):
         self.knight.frame = (self.knight.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 2
         if self.knight.skill_state is True:
-            self.knight.skill_frame = (self.knight.skill_frame + FRAMES_PER_ACTION * (ACTION_PER_TIME+2) * game_framework.frame_time) % 5
+            self.knight.skill_frame = (self.knight.skill_frame + FRAMES_PER_ACTION * (ACTION_PER_TIME+2) * game_framework.frame_time) % 6
         pass
     def draw(self):
         x = self.knight.x
         y = self.knight.y + 50
         # face_dir == 0 -> 오른쪽, 1 -> 왼쪽(수평 반전)
+        if self.knight.skill_state is True:
+            self.knight.image_sk[int(self.knight.skill_frame)].clip_draw(0, 0, 138, 154, x+10, y, 150, 160)
         if getattr(self.knight, 'face_dir', 0) == 0 or getattr(self.knight, 'face_dir', 0) == 2:
             self.knight.image[int(self.knight.frame)].clip_draw(0, 0, 100, 100, x, y, 150, 160)
         else:
             # 'h' 플래그로 수평 반전
             self.knight.image[int(self.knight.frame)].clip_composite_draw(0, 0, 100, 100, 0, 'h', x, y, 150, 160)
-        if self.knight.skill_state is True:
-            self.knight.image_sk[int(self.knight.skill_frame)].clip_draw(0, 0, 128, 55, x+10, y-70,
-                                                                       100, 40)
 
 
 class Attack:
@@ -79,8 +78,7 @@ class Attack:
         # 애니 프레임 업데이트
         self.knight.frame = (self.knight.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 5
         if self.knight.skill_state is True:
-            self.knight.skill_frame = (self.knight.skill_frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time) % 5
-            self.knight.frame = (self.knight.frame + (FRAMES_PER_ACTION_ac*4) * ACTION_PER_TIME * game_framework.frame_time) % 5
+            self.knight.skill_frame = (self.knight.skill_frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time) % 6
         target = getattr(self.knight, 'target', None)
         # 충돌이 끊기거나 타겟이 없으면 SEPARATE 이벤트 발생
         # 기존 game_world.collide 대신 game_world.in_attack_range 사용
@@ -89,9 +87,6 @@ class Attack:
             return
         # 공격 간격
         ATTACK_INTERVAL = 0.8
-        if self.knight.skill_state is True:
-            ATTACK_INTERVAL = 0.2
-
         self.attack_timer += game_framework.frame_time
         if self.attack_timer >= ATTACK_INTERVAL:
             self.attack_timer -= ATTACK_INTERVAL
@@ -117,6 +112,8 @@ class Attack:
         x = self.knight.x
         y = self.knight.y + 50
         # face_dir == 0 -> 오른쪽, 1 -> 왼쪽(수평 반전)
+        if self.knight.skill_state is True:
+            self.knight.image_sk[int(self.knight.skill_frame)].clip_draw(0, 0, 138, 154, x+10, y, 150, 160)
         if getattr(self.knight, 'face_dir', 0) == 0 or getattr(self.knight, 'face_dir', 0) == 2:
             self.knight.image[int(self.knight.frame)+1].clip_draw(0, 0, 100, 100, x, y, 150, 160)
             if self.knight.frame >= 3:
@@ -125,8 +122,7 @@ class Attack:
             self.knight.image[int(self.knight.frame)+1].clip_composite_draw(0, 0, 100, 100, 0, 'h', x, y, 150, 160)
             if self.knight.frame >= 3:
                 self.knight.image_at[int(self.knight.frame)-3].clip_composite_draw(0, 0,  124, 117, 0, 'h', x-50, y-20, 150, 160)
-        if self.knight.skill_state is True:
-            self.knight.image_sk[int(self.knight.skill_frame)].clip_draw(0, 0, 128, 55, x + 10, y - 70, 100, 40)
+
 
 
 
@@ -138,7 +134,7 @@ class Knight:
         image.append(None)
     for i in range(3):
         image_at.append(None)
-    for i in range(6):
+    for i in range(7):
         image_sk.append(None)
     def __init__(self):
         self.depth = 0
@@ -179,6 +175,7 @@ class Knight:
             self.image_sk[2] = load_image('tuar_skill03.png')
             self.image_sk[3] = load_image('tuar_skill04.png')
             self.image_sk[4] = load_image('tuar_skill05.png')
+            self.image_sk[5] = load_image('tuar_skill06.png')
 
         self.IDLE = Idle(self)
         self.ATK = Attack(self)

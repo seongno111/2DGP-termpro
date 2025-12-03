@@ -151,11 +151,11 @@ class Archer:
             self.image[5] = load_image('isli01_06.png')
             self.image[6] = load_image('isli01_07.png')
         if self.image_sk[0] is None:
-            self.image_sk[0] = load_image('tuar_skill01.png')
-            self.image_sk[1] = load_image('tuar_skill02.png')
-            self.image_sk[2] = load_image('tuar_skill03.png')
-            self.image_sk[3] = load_image('tuar_skill04.png')
-            self.image_sk[4] = load_image('tuar_skill05.png')
+            self.image_sk[0] = load_image('isli_skill01.png')
+            self.image_sk[1] = load_image('isli_skill02.png')
+            self.image_sk[2] = load_image('isli_skill03.png')
+            self.image_sk[3] = load_image('isli_skill04.png')
+            self.image_sk[4] = load_image('isli_skill05.png')
         self.IDLE = Idle(self)
         self.ATK = Attack(self)
 
