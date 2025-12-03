@@ -204,6 +204,31 @@ class Knight:
             }
         )
         self.target = None
+
+    def on_hit_by_monster(self, attacker):
+        """몬스터에게 피격되었을 때 호출된다."""
+        # 이미 공격 중이면 굳이 Idle -> Attack 전환 시도 안 함
+        if self.state_machine.cur_state is self.ATK:
+            return
+
+        # 공격 가능한 범위 안인지 확인
+        try:
+            if not game_world.in_attack_range(self, attacker):
+                return
+        except Exception:
+            return
+
+        # 현재 타겟이 없을 때만 이 몬스터를 타겟으로 삼고 공격 상태 진입
+        if getattr(self, 'target', None) is None:
+            try:
+                self.target = attacker
+            except Exception:
+                pass
+            try:
+                # Idle 상태에서 몬스터에게 공격받으면 ATK 상태로 넘기기 위한 이벤트
+                self.state_machine.handle_state_event(('COLLIDE', 'KNIGHT:MONSTER', attacker))
+            except Exception:
+                pass
     def get_at_bound(self):
         if self.face_dir == 0:
             x1, y1, x2, y2 = self.x - 50, self.y - 50, self.x + 150, self.y + 50
@@ -236,7 +261,7 @@ class Knight:
         except Exception:
             dt = 0.0
 
-        if self.skill_state == True:
+        if self.skill_state is True:
             self._skill_timer += dt
             self.Atk = 200
             while self._skill_timer >= 1.0 and self.skill > 0:

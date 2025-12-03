@@ -399,39 +399,34 @@ class Character:
                 cur_state = None
                 if sm is not None:
                     # StateMachine 구현 차이에 대비해 여러 속성명 허용
-                    cur_state = getattr(sm, 'state', None) or getattr(sm, 'current_state', None) or getattr(sm,
-                                                                                                            'cur_state',
-                                                                                                            None)
-
+                    cur_state = getattr(sm, 'state', None) or getattr(sm, 'current_state', None) or getattr(sm, 'cur_state',  None)
                 # 현재 상태가 Idle 인지 확인
-                if cur_state is self.IDLE:
                     # game_world의 모든 레이어/객체를 순회
-                    for layer in getattr(game_world, 'world', []):
-                        for obj in list(layer):
-                            if obj is None:
-                                continue
-                            # 필요한 속성들이 있는지 확인
-                            if not (hasattr(obj, 'x') and hasattr(obj, 'y') and hasattr(obj, 'skill') and hasattr(obj,
-                                                                                                                  'skill_state')):
-                                continue
-                            # 스킬이 10이 아닌 경우 통과
-                            if getattr(obj, 'skill', 0) != 10:
-                                continue
-                            if getattr(obj, 'depth', 0) == 0:
-                                left = obj.x - 10
-                                right = obj.x + 10
-                                bottom = obj.y + 90
-                                top = obj.y + 110
-                            if getattr(obj, 'depth', 0) == 1:
-                                left = obj.x - 10
-                                right = obj.x + 10
-                                bottom = obj.y + 130
-                                top = obj.y + 150
-                            if left <= mx <= right and bottom <= my <= top:
-                                try:
-                                    obj.skill_state = True
-                                except Exception:
-                                    pass
+                for layer in getattr(game_world, 'world', []):
+                    for obj in list(layer):
+                        if obj is None:
+                            continue
+                        # 필요한 속성들이 있는지 확인
+                        if not (hasattr(obj, 'x') and hasattr(obj, 'y') and hasattr(obj, 'skill') and hasattr(obj, 'skill_state')):
+                            continue
+
+                        if getattr(obj, 'skill', 0) != 10:
+                            continue
+                        if getattr(obj, 'depth', 0) == 0:
+                            left = obj.x - 10
+                            right = obj.x + 10
+                            bottom = obj.y + 90
+                            top = obj.y + 110
+                        if getattr(obj, 'depth', 0) == 1:
+                            left = obj.x - 10
+                            right = obj.x + 10
+                            bottom = obj.y + 130
+                            top = obj.y + 150
+                        if left <= mx <= right and bottom <= my <= top:
+                            try:
+                                obj.skill_state = True
+                            except Exception:
+                                pass
         except Exception:
             pass
 

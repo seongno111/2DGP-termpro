@@ -100,6 +100,20 @@ def add_collision_pair(group, a, b):
             collision_pairs[group][1].append(b)
     return None
 
+def _should_send_separate(attacker, target):
+    # 실제로 이 target을 향해 공격/저지중인지 확인
+    try:
+        # 공격 타겟이 target 이 아니면 굳이 SEPARATE 줄 필요 없음
+        if getattr(attacker, 'target', None) is not target:
+            return False
+        # Dptank, Knight 등 유닛 쪽은 자신이 "저지"하고 있는 몬스터가 아니면 끊지 않음
+        if getattr(attacker, '_blocking_target', False):
+            return True
+        # 몬스터쪽은 자신의 target 이면 끊어도 됨
+        return True
+    except Exception:
+        return True
+
 def handle_collisions():
     global collision_states
     for group, pairs in collision_pairs.items():
@@ -112,11 +126,8 @@ def handle_collisions():
         use_range = ((left in RANGE_ATTACKERS and right == 'MONSTER') or
                      (right in RANGE_ATTACKERS and left == 'MONSTER'))
 
-        # 안전히 복사본으로 순회
         for a in pairs[0][:]:
             if not any(a in layer for layer in world):
-                # 만약 월드에서 제거된 객체 관련된 상태 제거
-                # (a가 제거됐을 때 남아있는 collision_states 정리)
                 for key in list(collision_states):
                     if key[0] == id(a):
                         collision_states.discard(key)
@@ -128,13 +139,11 @@ def handle_collisions():
                             collision_states.discard(key)
                     continue
                 try:
-                    # 판단값 계산
                     if use_range:
                         in_range_a_b = in_attack_range(a, b)
                         in_range_b_a = in_attack_range(b, a)
                         phys_collide = collide(a, b)
 
-                        # A 쪽 충돌 여부 판정
                         a_should = False
                         b_should = False
                         if phys_collide:
@@ -149,35 +158,37 @@ def handle_collisions():
                         key_a = (id(a), id(b), group, 'a')
                         key_b = (id(a), id(b), group, 'b')
 
-                        # 시작: 아직 상태에 없으면 한 번만 호출
+                        # 시작
                         if a_should and key_a not in collision_states:
                             a.handle_collision(group, b)
                             collision_states.add(key_a)
-                        # 종료: 상태에 있는데 더 이상 조건이 아니면 SEPARATE 발생
+                        # 종료
                         if not a_should and key_a in collision_states:
-                            try:
-                                a.state_machine.handle_state_event(('SEPARATE', None))
-                            except Exception:
-                                pass
+                            if _should_send_separate(a, b):
+                                try:
+                                    a.state_machine.handle_state_event(('SEPARATE', None))
+                                except Exception:
+                                    pass
                             collision_states.discard(key_a)
 
                         if b_should and key_b not in collision_states:
                             b.handle_collision(group, a)
                             collision_states.add(key_b)
                         if not b_should and key_b in collision_states:
-                            try:
-                                b.state_machine.handle_state_event(('SEPARATE', None))
-                            except Exception:
-                                pass
+                            if _should_send_separate(b, a):
+                                try:
+                                    b.state_machine.handle_state_event(('SEPARATE', None))
+                                except Exception:
+                                    pass
                             collision_states.discard(key_b)
-
                     else:
+                        # 기존 근접 충돌 로직은 그대로 두되,
+                        # 종료 시에도 _should_send_separate 로 필터링
                         phys_collide = collide(a, b)
                         key_a = (id(a), id(b), group, 'a')
                         key_b = (id(a), id(b), group, 'b')
 
                         if phys_collide:
-                            # 시작이면 한 번만 호출
                             if key_a not in collision_states:
                                 a.handle_collision(group, b)
                                 collision_states.add(key_a)
@@ -185,23 +196,24 @@ def handle_collisions():
                                 b.handle_collision(group, a)
                                 collision_states.add(key_b)
                         else:
-                            # 종료 시 SEPARATE 한 번만 호출
                             if key_a in collision_states:
-                                try:
-                                    a.state_machine.handle_state_event(('SEPARATE', None))
-                                except Exception:
-                                    pass
+                                if _should_send_separate(a, b):
+                                    try:
+                                        a.state_machine.handle_state_event(('SEPARATE', None))
+                                    except Exception:
+                                        pass
                                 collision_states.discard(key_a)
                             if key_b in collision_states:
-                                try:
-                                    b.state_machine.handle_state_event(('SEPARATE', None))
-                                except Exception:
-                                    pass
+                                if _should_send_separate(b, a):
+                                    try:
+                                        b.state_machine.handle_state_event(('SEPARATE', None))
+                                    except Exception:
+                                        pass
                                 collision_states.discard(key_b)
 
                 except Exception:
-                    # 안전하게 무시하되 상태 정리 필요 시 정리
                     pass
+
 def change_object_depth(o, new_depth):
     """객체를 안전하게 다른 depth(레이어)로 이동시킴."""
     try:

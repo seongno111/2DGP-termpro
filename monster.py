@@ -1,4 +1,6 @@
 # python
+import sys
+
 from pico2d import load_image, get_canvas_height
 
 import game_framework
@@ -99,13 +101,30 @@ class Atack_state:
             self.attack_timer -= ATTACK_INTERVAL
 
             dmg = max(0, self.monster.Atk - getattr(target, 'Def', 0))
-            # 체력 감소
             try:
                 target.Hp -= dmg
             except Exception:
                 pass
+
+            # 여기서 Dptank 피격 시 Idle -> Attack 전환 트리거
+            try:
+                from Dptank import Dptank
+                from Knight import Knight
+                from Hptank import Hptank
+                from Vanguard import Vanguard
+                reactive_units = (Dptank, Knight, Hptank, Vanguard)
+
+                if isinstance(target, reactive_units):
+                    # 각 유닛 클래스에 on_hit_by_monster가 구현되어 있다고 가정
+                    hit_handler = getattr(target, 'on_hit_by_monster', None)
+                    if callable(hit_handler):
+                        hit_handler(self.monster)
+            except Exception:
+                pass
+
             print(
                 f'Monster({self.monster.num}) attacked {target.__class__.__name__} dmg={dmg} target_hp={getattr(target, "Hp", "?")}')
+
             if getattr(target, 'Hp', 1) <= 0:
                 print(f'{target.__class__.__name__} died.')
                 try:
@@ -122,15 +141,42 @@ class Atack_state:
                 except Exception:
                     pass
                 try:
-                    import stage01
-                    ch = getattr(stage01, 'character', None)
-                    if ch is not None:
+                    for mod_name in ('stage01', 'stage02', 'stage03'):
+                        mod = sys.modules.get(mod_name)
+                        if not mod:
+                            continue
+
+                        ch = getattr(mod, 'character', None)
+                        if ch is None:
+                            continue
+
+                        # 실제로 월드에 존재하는 캐릭터인 경우만 처리
+                        try:
+                            in_world = any(ch in layer for layer in game_world.world)
+                        except Exception:
+                            in_world = False
+
+                        if not in_world:
+                            continue
+
                         key = getattr(target, '_placed_key', None)
                         idx = getattr(target, '_placed_idx', None)
+
                         if key:
-                            ch.unit_placed[key] = False
-                        if idx is not None and idx in ch.occupied_tiles:
-                            ch.occupied_tiles.remove(idx)
+                            try:
+                                ch.unit_placed[key] = False
+                            except Exception:
+                                pass
+
+                        if idx is not None:
+                            try:
+                                if idx in ch.occupied_tiles:
+                                    ch.occupied_tiles.remove(idx)
+                            except Exception:
+                                pass
+
+                        # 한 스테이지만 처리하면 되므로 break
+                        break
                 except Exception:
                     pass
 
@@ -374,6 +420,7 @@ class Monster:
         self.state_machine.handle_state_event(('INPUT', event))
 
     def handle_collision(self, group, other):
+        # 기본 유효성 검사
         try:
             if other is None:
                 return
@@ -389,37 +436,88 @@ class Monster:
         left = left.strip().upper()
         right = right.strip().upper()
 
-        # 상대가 이미 다른 유닛에 의해 저지되어 있으면 통과시킨다
-        if getattr(other, '_blocked_by', None) is not None:
-            return
-
-        # 상대 유닛이 더 이상 추가 저지를 받을 수 없는 상태면 통과시킨다
-        if getattr(other, 'now_stop', 0) >= getattr(other, 'stop', 0):
-            return
-        # 공격자 이름을 대문자로 맞춤하여 비교
         attackers = {'KNIGHT', 'DPTANK', 'VANGUARD', 'HPTANK', 'ARCHER'}
-        if (left in attackers and right == 'MONSTER') or (right in attackers and left == 'MONSTER'):
+        is_unit_vs_monster = (
+                (left in attackers and right == 'MONSTER') or
+                (right in attackers and left == 'MONSTER')
+        )
+
+        if is_unit_vs_monster:
+            # [0] 기존에 막고 있던 유닛이 아직 "유효하게 나를 막고 있는지" 확인
+            blocked_by = getattr(self, '_blocked_by', None)
+            if blocked_by is not None:
+                try:
+                    # 0\) 죽었거나 월드에서 빠졌으면 무효
+                    is_dead = getattr(blocked_by, 'Hp', 1) <= 0
+                    in_world = any(blocked_by in layer for layer in game_world.world)
+                except Exception:
+                    is_dead = True
+                    in_world = False
+
+                # 1\) 여전히 나와 실제 충돌 중인지 확인
+                still_collide = False
+                if not is_dead and in_world and hasattr(blocked_by, 'get_bb'):
+                    try:
+                        still_collide = game_world.collide(self, blocked_by)
+                    except Exception:
+                        still_collide = False
+
+                # 더 이상 나를 막고 있지 않으면 `_blocked_by` 해제
+                if is_dead or (not in_world) or (not still_collide):
+                    try:
+                        self._blocked_by = None
+                    except Exception:
+                        pass
+                    blocked_by = None
+
+            # [1] 여기서 다시 읽어서, "진짜로" 아직 막고 있는 유닛이 있으면
+            #     그 유닛이 아닌 새 유닛(other)은 무시
+            blocked_by = getattr(self, '_blocked_by', None)
+            if blocked_by is not None and blocked_by is not other:
+                return
+
+            # [2] other 유닛이 더 이상 추가 저지를 못 하는 상태면,
+            #     이 몬스터는 그 유닛을 타겟으로도 잡지 않음 (통과)
+            now_stop = getattr(other, 'now_stop', 0)
+            stop = getattr(other, 'stop', 0)
+            if stop > 0 and now_stop >= stop:
+                # 여기서 self._blocked_by 는 건드리지 않음 -> "그냥 지나가는" 유닛
+                return
+
+            # [3] 여기까지 왔으면, 이 유닛이 실제로 나를 막을 수 있는 후보
             try:
+                # 이미 같은 타겟이면 재진입 방지
                 if getattr(self, 'target', None) is other:
                     return
+
+                # 몬스터 입장에서 지금 막힌 유닛으로 타겟 설정
                 self.target = other
-                if hasattr(self, 'state_machine') and self.state_machine is not None:
+
+                # 이 몬스터가 해당 유닛에 "막혔다"고 표시
+                try:
+                    self._blocked_by = other
+                except Exception:
+                    pass
+
+                sm = getattr(self, 'state_machine', None)
+                if sm is not None:
                     try:
-                        self.state_machine.handle_state_event(('COLLIDE', group, other))
+                        sm.handle_state_event(('COLLIDE', group, other))
                     except Exception:
                         pass
             except Exception:
                 pass
             return
 
-        # 기본 폴백: 다른 그룹과의 충돌도 처리
+        # 기본 폴백: 다른 그룹과의 충돌 처리
         try:
             if getattr(self, 'target', None) is other:
                 return
             self.target = other
-            if hasattr(self, 'state_machine') and self.state_machine is not None:
+            sm = getattr(self, 'state_machine', None)
+            if sm is not None:
                 try:
-                    self.state_machine.handle_state_event(('COLLIDE', group, other))
+                    sm.handle_state_event(('COLLIDE', group, other))
                 except Exception:
                     pass
         except Exception:

@@ -3,7 +3,7 @@ from pico2d import load_image, load_font
 import game_framework
 import game_world
 from state_machine import StateMachine
-
+from unit_collision_helper import handle_unit_vs_monster_collision
 
 TIME_PER_ACTION = 0.8
 ACTION_PER_TIME = 1.0 / TIME_PER_ACTION
@@ -108,6 +108,20 @@ class Attack:
     def exit(self, e):
         self.dptank.frame = 0
         self.attack_timer = 0.0
+        tgt = getattr(self.dptank, 'target', None)
+        if tgt is not None and getattr(self.dptank, '_blocking_target', False):
+            # 내가 진짜 막고 있던 타겟이면 now_stop 회수 및 block 해제
+            try:
+                self.dptank.now_stop = max(0, self.dptank.now_stop - 1)
+            except Exception:
+                pass
+            try:
+                if getattr(tgt, '_blocked_by', None) is self.dptank:
+                    tgt._blocked_by = None
+            except Exception:
+                pass
+        self.dptank.target = None
+        self.dptank._blocking_target = False
 
     def do(self):
         self.dptank.frame = (self.dptank.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 4
@@ -185,9 +199,8 @@ class Attack:
                         pass
                     self.dptank.target = next_target
                     self.attack_timer = 0.0
-                else:
-                    self.dptank.target = None
-                    self.dptank.state_machine.handle_state_event(('SEPARATE', None))
+                    if self.dptank.target is None or not game_world.collide(self.dptank, self.dptank.target):
+                        self.dptank.state_machine.handle_state_event(('SEPARATE', None))
 
     def draw(self):
         x = self.dptank.x
@@ -217,12 +230,14 @@ class Dptank:
         self.frame = 0
         self.face_dir = 0
         self.stop = 4
+        self.target = None
+        self._blocking_target = False
         self.skill_frame = 0
         self.now_stop = 0
         self.max_hp = 1500
         self.Hp = 1500
         self.Def = 30
-        self.Atk = 60
+        self.Atk = 10
         self.number = 4
         self.skill = 10
         self._skill_timer = 0.0
@@ -265,7 +280,30 @@ class Dptank:
             }
         )
         self.target = None
+    def on_hit_by_monster(self, attacker):
+        """몬스터에게 피격되었을 때 호출된다."""
+        # 이미 공격 중이면 굳이 Idle -> Attack 전환 시도 안 함
+        if self.state_machine.cur_state is self.ATK:
+            return
 
+        # 공격 가능한 범위 안인지 확인
+        try:
+            if not game_world.in_attack_range(self, attacker):
+                return
+        except Exception:
+            return
+
+        # 현재 타겟이 없을 때만 이 몬스터를 타겟으로 삼고 공격 상태 진입
+        if getattr(self, 'target', None) is None:
+            try:
+                self.target = attacker
+            except Exception:
+                pass
+            try:
+                # Idle 상태에서 몬스터에게 공격받으면 ATK 상태로 넘기기 위한 이벤트
+                self.state_machine.handle_state_event(('COLLIDE', 'DPTANK:MONSTER', attacker))
+            except Exception:
+                pass
     def get_at_bound(self):
         if self.face_dir == 0:
             x1, y1, x2, y2 = self.x - 50, self.y - 50, self.x + 50, self.y + 50
@@ -312,36 +350,11 @@ class Dptank:
     def get_bb(self):
         return self.x - 40, self.y - 40, self.x + 40, self.y + 40
 
+
     def handle_collision(self, group, other):
-        left, right = (group.split(':') + ['', ''])[:2]
-        left = left.strip().upper()
-        right = right.strip().upper()
-
-        # 이미 다른 유닛에 의해 저지되었으면 패스
-        if getattr(other, '_blocked_by', None) is not None:
-            return
-
-        if (left == 'DPTANK' and right == 'MONSTER') or (left == 'MONSTER' and right == 'DPTANK'):
-            if self.now_stop < self.stop:
-                other._blocked_by = self
-                self.now_stop += 1
-                if getattr(self, 'target', None) is None:
-                    self.target = other
-                try:
-                    self.state_machine.handle_state_event(('COLLIDE', group, other))
-                except Exception:
-                    pass
-            return
-        # fallback
-        if self.now_stop < self.stop:
-            other._blocked_by = self
-            self.now_stop += 1
-            if getattr(self, 'target', None) is None:
-                self.target = other
-            try:
-                self.state_machine.handle_state_event(('COLLIDE', group, other))
-            except Exception:
-                pass
+        blocked = handle_unit_vs_monster_collision(self, group, other)
+        if blocked and other is self.target:
+            self._blocking_target = True
         return
 
 
