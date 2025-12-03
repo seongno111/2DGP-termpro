@@ -375,8 +375,10 @@ class Character:
                 if not (hasattr(obj, 'x') and hasattr(obj, 'y') and hasattr(obj, 'skill')):
                     continue
                 try:
-                    if getattr(obj, 'skill', 0) == 10:
+                    if getattr(obj, 'skill', 0) == 10 and getattr(obj, 'depth', 0)  == 0:
                         draw_rectangle(obj.x - 10, obj.y + 90, obj.x + 10, obj.y + 110, 255, 215, 0, 3, True)
+                    elif getattr(obj, 'skill', 0) == 10 and getattr(obj, 'depth', 0)  == 1:
+                        draw_rectangle(obj.x - 10, obj.y + 130, obj.x + 10, obj.y + 150, 255, 215, 0, 3, True)
                 except Exception:
                     pass
 
@@ -415,13 +417,16 @@ class Character:
                             # 스킬이 10이 아닌 경우 통과
                             if getattr(obj, 'skill', 0) != 10:
                                 continue
-
-                            left = obj.x - 10
-                            right = obj.x + 10
-                            bottom = obj.y + 90
-                            top = obj.y + 110
-
-                            # 클릭이 해당 영역 안에 들어오면 skill_state 활성화
+                            if getattr(obj, 'depth', 0) == 0:
+                                left = obj.x - 10
+                                right = obj.x + 10
+                                bottom = obj.y + 90
+                                top = obj.y + 110
+                            if getattr(obj, 'depth', 0) == 1:
+                                left = obj.x - 10
+                                right = obj.x + 10
+                                bottom = obj.y + 130
+                                top = obj.y + 150
                             if left <= mx <= right and bottom <= my <= top:
                                 try:
                                     obj.skill_state = True

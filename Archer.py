@@ -19,6 +19,8 @@ class Idle:
         pass
     def do(self):
         self.archer.frame = (self.archer.frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time) % 2
+        if self.archer.skill_state is True:
+            self.archer.skill_frame = (self.archer.skill_frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time) % 5
     def draw(self):
         x = self.archer.x
         y = self.archer.y + 50
@@ -26,6 +28,8 @@ class Idle:
             self.archer.image[int(self.archer.frame)].clip_draw(0, 0, 100, 100, x, y+50, 150, 160)
         else:
             self.archer.image[int(self.archer.frame)].clip_composite_draw(0, 0, 100, 100, 0, 'h', x, y+50, 150, 160)
+        if self.archer.skill_state is True:
+            self.archer.image_sk[int(self.archer.skill_frame)].clip_draw(0, 0, 128, 55, x + 10, y - 30, 100, 40)
 
 
 class Attack:
@@ -45,10 +49,10 @@ class Attack:
 
     def do(self):
         self.archer.frame = (self.archer.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 5
+        if self.archer.skill_state is True:
+            self.archer.skill_frame = (self.archer.skill_frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time) % 5
+            self.archer.frame = (self.archer.frame + (FRAMES_PER_ACTION_ac*4) * ACTION_PER_TIME * game_framework.frame_time) % 5
         target = getattr(self.archer, 'target', None)
-
-        # 타겟 유효성 검사
-        removed_from_world = False
         try:
             removed_from_world = not any(target in layer for layer in game_world.world) if target is not None else False
         except Exception:
@@ -60,6 +64,8 @@ class Attack:
             return
 
         ATTACK_INTERVAL = 0.9
+        if self.archer.skill_state is True:
+            ATTACK_INTERVAL = 0.9/4
         self.attack_timer += game_framework.frame_time
         if self.attack_timer >= ATTACK_INTERVAL:
             self.attack_timer -= ATTACK_INTERVAL
@@ -107,15 +113,21 @@ class Attack:
             self.archer.image[int(self.archer.frame)+1].clip_draw(0, 0, 100, 100, x, y+50, 150, 160)
         else:
             self.archer.image[int(self.archer.frame)+1].clip_composite_draw(0, 0, 100, 100, 0, 'h', x, y+50, 150, 160)
+        if self.archer.skill_state is True:
+            self.archer.image_sk[int(self.archer.skill_frame)].clip_draw(0, 0, 128, 55, x + 10, y - 30, 100, 40)
 
 class Archer:
     image = []
+    image_sk = []
     for i in range(8):
         image.append(None)
+    for i in range(6):
+        image_sk.append(None)
     def __init__(self):
         self.depth = 1
         self.x, self.y = 0, 0
         self.frame = 0
+        self.skill_frame = 0
         self.face_dir = 0
         self.max_hp = 700
         self.Hp = 700
@@ -138,6 +150,12 @@ class Archer:
             self.image[4] = load_image('isli01_05.png')
             self.image[5] = load_image('isli01_06.png')
             self.image[6] = load_image('isli01_07.png')
+        if self.image_sk[0] is None:
+            self.image_sk[0] = load_image('tuar_skill01.png')
+            self.image_sk[1] = load_image('tuar_skill02.png')
+            self.image_sk[2] = load_image('tuar_skill03.png')
+            self.image_sk[3] = load_image('tuar_skill04.png')
+            self.image_sk[4] = load_image('tuar_skill05.png')
         self.IDLE = Idle(self)
         self.ATK = Attack(self)
 
@@ -179,7 +197,7 @@ class Archer:
     def draw(self):
         self.state_machine.draw()
         for i in range(int((self.Hp / 700) * 100 // 10)):
-            self.font.draw(self.x - 50 + i * 10, self.y + 80, f'/', (100, 250, 100))
+            self.font.draw(self.x - 50 + i * 10, self.y + 120, f'/', (100, 250, 100))
     def update(self):
         self.state_machine.update()
         try:
