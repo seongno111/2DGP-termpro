@@ -122,6 +122,9 @@ class Archer:
         self.Def = 10
         self.Atk = 120
         self.number = 2
+        self.skill = 10
+        self._skill_timer = 0.0
+        self.skill_state = False
         self.tile_w = 100
         self.tile_h = 100
         self.tile_center_x = 0
@@ -179,6 +182,24 @@ class Archer:
             self.font.draw(self.x - 50 + i * 10, self.y + 80, f'/', (100, 250, 100))
     def update(self):
         self.state_machine.update()
+        try:
+            dt = game_framework.frame_time
+        except Exception:
+            dt = 0.0
+
+        if self.skill_state is True:
+            self._skill_timer += dt
+            while self._skill_timer >= 1.0 and self.skill > 0:
+                self.skill = max(0, self.skill - 1)
+                self._skill_timer -= 1.0
+                if self.skill == 0:
+                    self.skill_state = False
+
+        else:
+            self._skill_timer += dt
+            while self._skill_timer >= 1.0 and self.skill < 10:
+                self.skill = min(10, self.skill + 1)
+                self._skill_timer -= 1.0
     def get_bb(self):
         return self.x - 20, self.y - 20, self.x + 20, self.y + 20
 

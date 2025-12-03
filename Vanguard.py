@@ -263,7 +263,7 @@ class Vanguard:
 
 
     def get_bb(self):
-        return self.x - 50, self.y - 40, self.x + 50, self.y + 40
+        return self.x - 40, self.y - 40, self.x + 40, self.y + 40
 
     def handle_collision(self, group, other):
         left, right = (group.split(':') + ['', ''])[:2]

@@ -368,6 +368,17 @@ class Character:
                 right = x + 50
                 top = self.p_y + 50
                 draw_rectangle(left, bottom, right, top)
+        for layer in getattr(game_world, 'world', []):
+            for obj in list(layer):
+                if obj is None:
+                    continue
+                if not (hasattr(obj, 'x') and hasattr(obj, 'y') and hasattr(obj, 'skill')):
+                    continue
+                try:
+                    if getattr(obj, 'skill', 0) == 10:
+                        draw_rectangle(obj.x - 10, obj.y + 90, obj.x + 10, obj.y + 110, 255, 215, 0, 3, True)
+                except Exception:
+                    pass
 
     # python
     def handle_event(self, event):

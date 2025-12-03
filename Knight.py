@@ -121,10 +121,9 @@ class Attack:
             self.knight.image[int(self.knight.frame)+1].clip_composite_draw(0, 0, 100, 100, 0, 'h', x, y, 150, 160)
             if self.knight.frame >= 3:
                 self.knight.image_at[int(self.knight.frame)-3].clip_composite_draw(0, 0,  124, 117, 0, 'h', x-50, y-20, 150, 160)
-
         if self.knight.skill_state is True:
-            self.knight.image_sk[int(self.knight.skill_frame)].clip_draw(0, 0, 128, 55, x + 10, y - 70,
-                                                                         100, 40)
+            self.knight.image_sk[int(self.knight.skill_frame)].clip_draw(0, 0, 128, 55, x + 10, y - 70, 100, 40)
+
 
 
 class Knight:
@@ -218,8 +217,7 @@ class Knight:
         self.state_machine.draw()
         for i in range(int((self.Hp/1000)*100//10)):
             self.font.draw(self.x-50+i*10, self.y+80, f'/', (100, 250, 100))
-        if self.skill == 10:
-            draw_rectangle(self.x-10, self.y+90, self.x+10, self.y+110, 255, 215, 0, 3, True)
+
     def get_bb(self):
         return self.x - 40, self.y - 40, self.x + 40, self.y + 40
 

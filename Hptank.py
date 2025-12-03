@@ -141,6 +141,9 @@ class Hptank:
         self.Def = 10
         self.Atk = 60
         self.number = 3
+        self.skill = 10
+        self._skill_timer = 0.0
+        self.skill_state = False
         self.tile_w = 100
         self.tile_h = 100
         self.tile_center_x = 0
@@ -196,7 +199,7 @@ class Hptank:
             self.font.draw(self.x - 50 + i * 10, self.y + 80, f'/', (100, 250, 100))
 
     def get_bb(self):
-        return self.x - 50, self.y - 40, self.x + 50, self.y + 40
+        return self.x - 40, self.y - 40, self.x + 40, self.y + 40
 
     def handle_collision(self, group, other):
         try:
@@ -241,5 +244,23 @@ class Hptank:
 
     def update(self):
         self.state_machine.update()
+        try:
+            dt = game_framework.frame_time
+        except Exception:
+            dt = 0.0
+
+        if self.skill_state is True:
+            self._skill_timer += dt
+            while self._skill_timer >= 1.0 and self.skill > 0:
+                self.skill = max(0, self.skill - 1)
+                self._skill_timer -= 1.0
+                if self.skill == 0:
+                    self.skill_state = False
+
+        else:
+            self._skill_timer += dt
+            while self._skill_timer >= 1.0 and self.skill < 10:
+                self.skill = min(10, self.skill + 1)
+                self._skill_timer -= 1.0
     def handle_event(self, event):
         self.state_machine.handle_state_event(('INPUT', event))
