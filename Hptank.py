@@ -213,7 +213,7 @@ class Hptank:
         self.stop = 4
         self.now_stop = 0
         self.max_hp = 2000
-        self.Hp = 2000
+        self.Hp = 1000
         self.Def = 10
         self.Atk = 60
         self.number = 3
@@ -342,10 +342,19 @@ class Hptank:
         if self.skill_state is True:
             self._skill_timer += dt
             while self._skill_timer >= 1.0 and self.skill > 0:
+                # 스킬 게이지 감소
                 self.skill = max(0, self.skill - 1)
+
+                # Hp 회복: 최대 Hp 를 넘지 않도록 clamp
+                if self.Hp < self.max_hp:
+                    self.Hp = min(self.max_hp, self.Hp + 100)
+
                 self._skill_timer -= 1.0
+
+                # 스킬 소진 시 종료
                 if self.skill == 0:
                     self.skill_state = False
+                    break
 
         else:
             self._skill_timer += dt
