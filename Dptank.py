@@ -220,7 +220,7 @@ class Dptank:
         self.skill_frame = 0
         self.now_stop = 0
         self.max_hp = 1500
-        self.Hp = 1000
+        self.Hp = 1500
         self.Def = 30
         self.Atk = 60
         self.number = 4
@@ -295,6 +295,7 @@ class Dptank:
 
         if self.skill_state is True:
             self._skill_timer += dt
+            self.Def = 100
             while self._skill_timer >= 1.0 and self.skill > 0:
                 self.skill = max(0, self.skill - 1)
                 self._skill_timer -= 1.0
@@ -303,6 +304,7 @@ class Dptank:
 
         else:
             self._skill_timer += dt
+            self.Def = 30
             while self._skill_timer >= 1.0 and self.skill < 10:
                 self.skill = min(10, self.skill + 1)
                 self._skill_timer -= 1.0
