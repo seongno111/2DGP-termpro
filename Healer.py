@@ -57,7 +57,7 @@ class Idle:
         y = self.healer.y + 50
         if self.healer.skill_state:
             self.healer.sk_image[int(self.healer.skill_frame)].clip_draw(0, 0, 256, 246, x, y + 50, 160, 150)
-            return
+
         if getattr(self.healer, 'face_dir', 0) == 0:
             self.healer.image[int(self.healer.frame)].clip_draw(0, 0, 100, 100, x, y+50, 150, 160)
         else:
@@ -165,7 +165,6 @@ class Heal:
         y = self.healer.y + 50
         if self.healer.skill_state:
             self.healer.sk_image[int(self.healer.skill_frame)].clip_draw(0, 0, 256, 246, x, y+50, 160, 150)
-            return
         if getattr(self.healer, 'face_dir', 0) == 0:
             idx = min(len(self.healer.image)-1, int(self.healer.frame))
             self.healer.image[idx].clip_draw(0, 0, 100, 100, x, y+50, 150, 160)
