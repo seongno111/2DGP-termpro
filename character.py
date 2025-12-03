@@ -379,59 +379,131 @@ class Character:
                         draw_rectangle(obj.x - 10, obj.y + 90, obj.x + 10, obj.y + 110, 255, 215, 0, 3, True)
                     elif getattr(obj, 'skill', 0) == 10 and getattr(obj, 'depth', 0)  == 1:
                         draw_rectangle(obj.x - 10, obj.y + 130, obj.x + 10, obj.y + 150, 255, 215, 0, 3, True)
+                    draw_rectangle(obj.x - 50, obj.y - 50, obj.x - 30, obj.y - 30, 255, 0, 0, 3, True)
                 except Exception:
                     pass
-
-    # python
     def handle_event(self, event):
-        """
-        마우스 왼쪽 버튼 다운 시 Idle 상태에서 모든 유닛의 스킬 버튼 영역을 검사하여
-        해당 유닛의 skill이 10이면 skill_state를 True로 설정한다.
-        """
         try:
-            # 왼쪽 마우스 버튼 다운 감지
+            # 마우스 좌클릭만 특별 처리
             if getattr(event, 'type', None) == SDL_MOUSEBUTTONDOWN and getattr(event, 'button',
                                                                                None) == SDL_BUTTON_LEFT:
                 mx, my = _get_mouse_pos(event)
 
-                # Character가 Idle 상태일 때만 동작하도록 시도해서 확인
+                # 1\) 먼저 퇴각 클릭(빨간 사각형) 판정
+                for layer in list(getattr(game_world, 'world', [])):
+                    for obj in list(layer):
+                        if obj is None:
+                            continue
+                        # 배치된 유닛으로 한정: x,y,skill 이 있고, `_placed_key` 가 존재하는 것만
+                        if not (hasattr(obj, 'x') and hasattr(obj, 'y') and hasattr(obj, 'skill')):
+                            continue
+
+                        # draw()에서 그린 빨간 사각형과 동일 범위
+                        left = obj.x - 50
+                        right = obj.x - 30
+                        bottom = obj.y - 50
+                        top = obj.y - 30
+
+                        if left <= mx <= right and bottom <= my <= top:
+                            # 이 유닛의 배치 키와 타일 인덱스 조회
+                            placed_key = getattr(obj, '_placed_key', None)
+                            placed_idx = getattr(obj, '_placed_idx', None)
+
+                            # 비용 회수: 자신의 비용 절반의 정수만큼 추가
+                            if placed_key and placed_key in self.unit_map:
+                                unit_cost = self.unit_map[placed_key].get('cost', 0)
+                                try:
+                                    self.cost += int(unit_cost / 2)
+                                except Exception:
+                                    pass
+
+                                # 배치 상태 해제
+                                try:
+                                    self.unit_placed[placed_key] = False
+                                except Exception:
+                                    pass
+
+                            # 점유 타일 해제
+                            if placed_idx is not None:
+                                try:
+                                    if placed_idx in self.occupied_tiles:
+                                        self.occupied_tiles.remove(placed_idx)
+                                except Exception:
+                                    pass
+
+                            # 유닛에 부착된 오버레이 제거
+                            try:
+                                overlay = getattr(obj, '_overlay', None)
+                                if overlay is not None:
+                                    game_world.remove_object(overlay)
+                            except Exception:
+                                pass
+
+                            # 실제 유닛 제거
+                            try:
+                                game_world.remove_object(obj)
+                            except Exception:
+                                pass
+                            try:
+                                game_world.remove_collision_object(obj)
+                            except Exception:
+                                pass
+
+                            # 퇴각 하나만 처리하고 종료
+                            return
+
+                # 2\) 스킬 발동 클릭(노란 사각형) 처리
                 sm = getattr(self, 'state_machine', None)
                 cur_state = None
                 if sm is not None:
-                    # StateMachine 구현 차이에 대비해 여러 속성명 허용
-                    cur_state = getattr(sm, 'state', None) or getattr(sm, 'current_state', None) or getattr(sm, 'cur_state',  None)
-                # 현재 상태가 Idle 인지 확인
-                    # game_world의 모든 레이어/객체를 순회
+                    cur_state = getattr(sm, 'state', None) or getattr(sm, 'current_state', None) or getattr(sm,
+                                                                                                            'cur_state',
+                                                                                                            None)
+
                 for layer in getattr(game_world, 'world', []):
                     for obj in list(layer):
                         if obj is None:
                             continue
                         # 필요한 속성들이 있는지 확인
-                        if not (hasattr(obj, 'x') and hasattr(obj, 'y') and hasattr(obj, 'skill') and hasattr(obj, 'skill_state')):
+                        if not (hasattr(obj, 'x') and hasattr(obj, 'y') and hasattr(obj, 'skill') and hasattr(obj,
+                                                                                                              'skill_state')):
                             continue
 
+                        # 스킬 게이지가 가득 찬 유닛만 대상
                         if getattr(obj, 'skill', 0) != 10:
                             continue
+
+                        # depth 에 따라 노란 사각형 위치 결정
                         if getattr(obj, 'depth', 0) == 0:
                             left = obj.x - 10
                             right = obj.x + 10
                             bottom = obj.y + 90
                             top = obj.y + 110
-                        if getattr(obj, 'depth', 0) == 1:
+                        elif getattr(obj, 'depth', 0) == 1:
                             left = obj.x - 10
                             right = obj.x + 10
                             bottom = obj.y + 130
                             top = obj.y + 150
+                        else:
+                            continue
+
+                        # 노란 사각형 클릭 \-> 스킬 발동
                         if left <= mx <= right and bottom <= my <= top:
                             try:
                                 obj.skill_state = True
                             except Exception:
                                 pass
-        except Exception:
-            pass
+                            return
 
-        # 원래 동작 유지: 상태 머신에 이벤트 전달
-        try:
-            self.state_machine.handle_state_event(('INPUT', event))
+            # 퇴각/스킬 처리 외의 나머지 입력은 기존 상태머신으로 전달
+            try:
+                self.state_machine.handle_state_event(('INPUT', event))
+            except Exception:
+                pass
+
         except Exception:
-            pass
+            # 예상치 못한 예외로 게임이 멈추지 않도록 방어
+            try:
+                self.state_machine.handle_state_event(('INPUT', event))
+            except Exception:
+                pass
