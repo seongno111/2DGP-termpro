@@ -117,11 +117,17 @@ class Attack:
         if getattr(self.knight, 'face_dir', 0) == 0 or getattr(self.knight, 'face_dir', 0) == 2:
             self.knight.image[int(self.knight.frame)+1].clip_draw(0, 0, 100, 100, x, y, 150, 160)
             if self.knight.frame >= 3:
-                self.knight.image_at[int(self.knight.frame)-3].clip_draw(0, 0, 124, 117, x + 50, y-20, 100, 160)
+                if self.knight.skill_state is True:
+                    self.knight.image_at[int(self.knight.frame) - 3].clip_draw(0, 0, 124, 117, x + 50, y + 40, 200, 260)
+                else:
+                    self.knight.image_at[int(self.knight.frame)-3].clip_draw(0, 0, 124, 117, x + 50, y-20, 200, 210)
         else:
             self.knight.image[int(self.knight.frame)+1].clip_composite_draw(0, 0, 100, 100, 0, 'h', x, y, 150, 160)
             if self.knight.frame >= 3:
-                self.knight.image_at[int(self.knight.frame)-3].clip_composite_draw(0, 0,  124, 117, 0, 'h', x-50, y-20, 150, 160)
+                if self.knight.skill_state is True:
+                    self.knight.image_at[int(self.knight.frame) - 3].clip_composite_draw(0, 0,  124, 117, 0, 'h', x-50, y+40, 250, 260)
+                else:
+                    self.knight.image_at[int(self.knight.frame)-3].clip_composite_draw(0, 0,  124, 117, 0, 'h', x-50, y-20, 200, 210)
 
 
 
@@ -230,8 +236,9 @@ class Knight:
         except Exception:
             dt = 0.0
 
-        if self.skill_state is True:
+        if self.skill_state == True:
             self._skill_timer += dt
+            self.Atk = 200
             while self._skill_timer >= 1.0 and self.skill > 0:
                 self.skill = max(0, self.skill - 1)
                 self._skill_timer -= 1.0
@@ -240,11 +247,12 @@ class Knight:
 
         else:
             self._skill_timer += dt
+            self.Atk = 100
             while self._skill_timer >= 1.0 and self.skill < 10:
                 self.skill = min(10, self.skill + 1)
                 self._skill_timer -= 1.0
 
-        print(self.skill)
+
 
     def handle_event(self, event):
         self.state_machine.handle_state_event(('INPUT', event))
