@@ -17,17 +17,20 @@ class Idle:
     def exit(self, e):
         pass
     def do(self):
+        if self.dptank.skill_state is True:
+            self.dptank.skill_frame = (self.dptank.skill_frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 5
         # 필요하면 아이들 애니메이션 처리
         self.dptank.frame = (self.dptank.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 2
     def draw(self):
         x = self.dptank.x
         y = self.dptank.y + 50
+        if self.dptank.skill_state is True:
+            self.dptank.sk_image[int(self.dptank.skill_frame)].clip_draw(0, 0, 63, 90, x, y, 150, 160)
         if getattr(self.dptank, 'face_dir', 0) == 0:
             self.dptank.image[int(self.dptank.frame)].clip_draw(0, 0, 100, 100, x, y, 150, 160)
         else:
             self.dptank.image[int(self.dptank.frame)].clip_composite_draw(0, 0, 100, 100, 0, 'h', x, y, 150, 160)
-# python
-# python
+
 class Attack:
     def __init__(self, dptank):
         self.dptank = dptank
@@ -108,6 +111,8 @@ class Attack:
 
     def do(self):
         self.dptank.frame = (self.dptank.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 4
+        if self.dptank.skill_state is True:
+            self.dptank.skill_frame = (self.dptank.skill_frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 5
         target = getattr(self.dptank, 'target', None)
 
         # 타겟이 없거나 범위 밖이면 후보 찾기
@@ -187,6 +192,8 @@ class Attack:
     def draw(self):
         x = self.dptank.x
         y = self.dptank.y + 50
+        if self.dptank.skill_state is True:
+            self.dptank.sk_image[int(self.dptank.skill_frame)].clip_draw(0, 0, 63, 90, x, y, 150, 160)
         if getattr(self.dptank, 'face_dir', 0) == 0:
             self.dptank.image[int(self.dptank.frame)+2].clip_draw(0, 0, 100, 100, x, y, 150, 160)
             self.dptank.at_image[int(self.dptank.frame)+1].clip_draw(0, 0, 123, 107, x+50, y, 150, 160)
@@ -201,12 +208,16 @@ class Dptank:
     at_image = []
     for i in range(6):
         at_image.append(None)
+    sk_image = []
+    for i in range(6):
+        sk_image.append(None)
     def __init__(self):
         self.depth = 0
         self.x, self.y = 0, 0
         self.frame = 0
         self.face_dir = 0
         self.stop = 4
+        self.skill_frame = 0
         self.now_stop = 0
         self.max_hp = 1500
         self.Hp = 1000
@@ -233,6 +244,11 @@ class Dptank:
             self.at_image[2] = load_image('dp_at_ef_03.png')
             self.at_image[3] = load_image('dp_at_ef_04.png')
             self.at_image[4] = load_image('dp_at_ef_05.png')
+            self.sk_image[0] = load_image('ext_skill1.png')
+            self.sk_image[1] = load_image('ext_skill2.png')
+            self.sk_image[2] = load_image('ext_skill3.png')
+            self.sk_image[3] = load_image('ext_skill4.png')
+            self.sk_image[4] = load_image('ext_skill5.png')
         self.IDLE = Idle(self)
         self.ATK = Attack(self)
 
