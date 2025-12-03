@@ -20,6 +20,8 @@ class Idle:
     def do(self):
         # 애니메이션 프레임은 매프레임 갱신
         self.healer.frame = (self.healer.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 2
+        if self.healer.skill_state:
+            self.healer.skill_frame = (self.healer.skill_frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 2
 
         # 스캔 쿨다운 초기화
         if not hasattr(self.healer, 'scan_cooldown'):
@@ -53,6 +55,9 @@ class Idle:
     def draw(self):
         x = self.healer.x
         y = self.healer.y + 50
+        if self.healer.skill_state:
+            self.healer.sk_image[int(self.healer.skill_frame)].clip_draw(0, 0, 256, 246, x, y + 50, 160, 150)
+            return
         if getattr(self.healer, 'face_dir', 0) == 0:
             self.healer.image[int(self.healer.frame)].clip_draw(0, 0, 100, 100, x, y+50, 150, 160)
         else:
@@ -78,7 +83,8 @@ class Heal:
 
     def do(self):
         self.healer.frame = (self.healer.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 5
-
+        if self.healer.skill_state:
+            self.healer.skill_frame = (self.healer.skill_frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 2
         target = getattr(self.healer, 'target', None)
 
         if target is None:
@@ -118,6 +124,8 @@ class Heal:
         if self.heal_timer >= HEAL_INTERVAL:
             self.heal_timer -= HEAL_INTERVAL
             heal_amount = getattr(self.healer, 'Atk', 100)
+            if self.healer.skill_state:
+                heal_amount = int(heal_amount * 2.0)
             target.Hp = min(target.max_hp, target.Hp + heal_amount)
             print(f'Healer healed {target.__class__.__name__} +{heal_amount} hp -> {getattr(target, "Hp", "?")}')
 
@@ -155,6 +163,9 @@ class Heal:
     def draw(self):
         x = self.healer.x
         y = self.healer.y + 50
+        if self.healer.skill_state:
+            self.healer.sk_image[int(self.healer.skill_frame)].clip_draw(0, 0, 256, 246, x, y+50, 160, 150)
+            return
         if getattr(self.healer, 'face_dir', 0) == 0:
             idx = min(len(self.healer.image)-1, int(self.healer.frame))
             self.healer.image[idx].clip_draw(0, 0, 100, 100, x, y+50, 150, 160)
@@ -164,12 +175,16 @@ class Heal:
 
 class Healer:
     image = []
+    sk_image = []
     for i in range(7):
         image.append(None)
+    for i in range(3):
+        sk_image.append(None)
     def __init__(self):
         self.depth = 1
         self.x, self.y = 0, 0
         self.frame = 0
+        self.skill_frame = 0
         self.face_dir = 0
         self.max_hp = 800
         self.Hp = 800
@@ -191,6 +206,9 @@ class Healer:
             self.image[4] = load_image('luna01_05.png')
             self.image[5] = load_image('luna01_06.png')
             self.image[6] = load_image('luna01_07.png')
+
+            self.sk_image[0] = load_image('luna_skill1.png')
+            self.sk_image[1] = load_image('luna_skill2.png')
 
         self.HEAL_INTERVAL = HEAL_INTERVAL
         self.heal_timer = 0.0
