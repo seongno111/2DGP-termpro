@@ -79,7 +79,8 @@ class Attack:
         # 애니 프레임 업데이트
         self.knight.frame = (self.knight.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 5
         if self.knight.skill_state is True:
-            self.knight.skill_frame = (self.knight.skill_frame + FRAMES_PER_ACTION * (ACTION_PER_TIME+2) * game_framework.frame_time) % 5
+            self.knight.skill_frame = (self.knight.skill_frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time) % 5
+            self.knight.frame = (self.knight.frame + (FRAMES_PER_ACTION_ac*4) * ACTION_PER_TIME * game_framework.frame_time) % 5
         target = getattr(self.knight, 'target', None)
         # 충돌이 끊기거나 타겟이 없으면 SEPARATE 이벤트 발생
         # 기존 game_world.collide 대신 game_world.in_attack_range 사용
@@ -88,6 +89,9 @@ class Attack:
             return
         # 공격 간격
         ATTACK_INTERVAL = 0.8
+        if self.knight.skill_state is True:
+            ATTACK_INTERVAL = 0.2
+
         self.attack_timer += game_framework.frame_time
         if self.attack_timer >= ATTACK_INTERVAL:
             self.attack_timer -= ATTACK_INTERVAL
