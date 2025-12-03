@@ -266,7 +266,7 @@ def find_boss_path_indices_from(start_idx, stage_list):
     return boss_path
 
 def spwan_monster():
-    global _last_spawn_time, _spawn_index, monster_num, _spawn_batch_count
+    global _last_spawn_time, _spawn_index, monster_num, _spawn_batch_count, _monsters_list
     if _result_shown:
         return
 
@@ -274,7 +274,6 @@ def spwan_monster():
     if not _spawn_positions:
         return
 
-    # 예: whole_mon 마리까지만 스폰
     if monster_num >= whole_mon:
         return
 
@@ -282,8 +281,6 @@ def spwan_monster():
         return
 
     pos_index = _spawn_positions[_spawn_index]
-
-    # 일반 몬스터인지, Boss 인지 결정
     is_boss = (monster_num + 1 == whole_mon)
 
     try:
@@ -299,13 +296,9 @@ def spwan_monster():
     if path_indices:
         path_coords = [_tile_index_to_center(i) for i in path_indices]
 
-    # 몬스터 생성
     try:
         if is_boss:
             monster = Boss(pos_index, path=path_coords)
-            # 필요하면 여기서도 추가 보정 가능
-            # monster.Hp *= 2
-            # monster.Atk *= 2
         else:
             monster = Monster(pos_index, path=path_coords)
     except Exception as e:
@@ -320,7 +313,13 @@ def spwan_monster():
         print(f"[STAGE03][SPAWN_ERROR] add_object failed: {e}")
         return
 
-    # 충돌쌍 등록 (stage01/02 패턴 재사용)
+    # \_monsters_list에 일반 몬스터와 보스를 모두 넣어준다.
+    try:
+        if monster not in _monsters_list:
+            _monsters_list.append(monster)
+    except Exception:
+        pass
+
     try:
         if character is not None and hasattr(character, 'unit_map'):
             for key in character.unit_map.keys():
@@ -338,14 +337,14 @@ def spwan_monster():
     monster_num += 1
     _last_spawn_time = now
 
-    # 같은 스폰 위치에서 몇 마리 뽑았는지 카운트
     _spawn_batch_count += 1
     if _spawn_batch_count >= 3:
         _spawn_batch_count = 0
         _spawn_index = (_spawn_index + 1) % len(_spawn_positions)
 
-    print(
-        f"[STAGE03][SPAWN_OK] idx={pos_index} boss={is_boss} path_len={(len(path_indices) if path_indices else 0)} monster_num={monster_num}")
+    print(f"[STAGE03][SPAWN_OK] idx={pos_index} boss={is_boss} "
+          f"path_len={(len(path_indices) if path_indices else 0)} monster_num={monster_num}")
+
 
 def _check_defeat_by_monster_enter_goal():
     global _result_shown, _result_start_time, _result_type
@@ -356,22 +355,20 @@ def _check_defeat_by_monster_enter_goal():
     COLS = 10
     try:
         for m in list(_monsters_list):
-            # 유효한 몬스터인지 확인
             if not hasattr(m, 'x') or not hasattr(m, 'y'):
                 continue
-            # tile index 계산
+
             col = int(m.x // TILE_W)
             row = int((get_canvas_height() - m.y) // TILE_H)
             if col < 0 or row < 0:
                 continue
+
             idx = row * COLS + col
-            if 0 <= idx < len(stage_temp):
-                if stage_temp[idx] == 4:
-                    # 패배 트리거
-                    _result_shown = True
-                    _result_start_time = time.time()
-                    _result_type = 'd'
-                    return
+            if 0 <= idx < len(stage_temp) and stage_temp[idx] == 4:
+                _result_shown = True
+                _result_start_time = time.time()
+                _result_type = 'd'
+                return
     except Exception:
         pass
 
