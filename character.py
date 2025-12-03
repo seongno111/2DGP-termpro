@@ -206,17 +206,23 @@ class Character:
 
             # 현재 로드된 스테이지 모듈을 동적으로 찾아 사용 (stage02 우선, 없으면 stage01)
             import sys
+
             stage_module = None
-            for mod_name in ('stage02', 'stage01'):
+            # stage03 -> stage02 -> stage01 순으로 이미 로드된 모듈을 탐색
+            for mod_name in ('stage03', 'stage02', 'stage01'):
                 if mod_name in sys.modules:
                     stage_module = sys.modules[mod_name]
                     break
+
+            # 어떤 스테이지도 로드되지 않았다면 기본값으로 stage01 사용
             if stage_module is None:
                 stage_module = stage01
 
+            # stage_temp 존재 및 길이 검사
             if not hasattr(stage_module, 'stage_temp') or len(stage_module.stage_temp) == 0:
                 print("stage_temp empty")
                 return False
+
             ROWS = len(stage_module.stage_temp) // COLS
 
             col = int(mx // TILE_W)
