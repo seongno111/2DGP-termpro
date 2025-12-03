@@ -1,7 +1,7 @@
 # python
 import sys
 
-from pico2d import load_image, get_canvas_height
+from pico2d import load_image, get_canvas_height, load_font
 
 import game_framework
 import game_world
@@ -215,6 +215,7 @@ class Monster:
         self.frame = 0
         self.face_dir = 0
         self.target = None
+        self.font = load_font('ENCR10B.TTF', 30)
 
         # path: list of (x,y) coords — 몬스터는 이 경로를 따라감
         self.path = path if path is not None else None
@@ -413,6 +414,8 @@ class Monster:
             pass
     def draw(self):
         self.state_machine.draw()
+        for i in range(int((self.Hp / 300) * 100 // 10)):
+            self.font.draw(self.x - 50 + i * 10, self.y + 80, f'/', (100, 250, 100))
 
     def get_bb(self):
         return self.x - 50, self.y - 50, self.x + 50, self.y + 50
