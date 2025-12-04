@@ -28,6 +28,8 @@ class Idle:
         pass
     def do(self):
         # 경로가 없을 때만 기본 전진 동작을 수행하도록 변경 (경로 따라갈 때 간섭 방지)
+        if self.monster.damaged:
+            self.monster.d_frame = (self.monster.d_frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time)%2
         if not getattr(self.monster, 'path', None) or self.monster.path_idx >= len(self.monster.path):
             self.monster.x += RUN_SPEED_PPS * game_framework.frame_time
             self.monster.frame = (self.monster.frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time) % 2
@@ -38,6 +40,8 @@ class Idle:
         x = self.monster.x
         y = self.monster.y + 30
         face = getattr(self.monster, 'face_dir', 0)
+        if self.monster.damaged:
+            self.monster.d_image[int(self.monster.d_frame)].clip_draw(0, 0, 100, 100, x, y + 30, 200, 400)
         if face == 0:
             self.monster.image[int(self.monster.frame)].clip_draw(0, 0, 100, 100, x, y, 150, 150)
         else:
@@ -86,6 +90,8 @@ class Atack_state:
             pass
     def do(self):
         self.monster.frame = (self.monster.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 3
+        if self.monster.damaged:
+            self.monster.d_frame = (self.monster.d_frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time)%2
         target = getattr(self.monster, 'target', None)
 
         # 대상이 없거나 충돌이 끊기면 SEPARATE 발생
@@ -186,6 +192,8 @@ class Atack_state:
         x = self.monster.x
         y = self.monster.y + 30
         face = getattr(self.monster, 'face_dir', 0)
+        if self.monster.damaged:
+            self.monster.d_image[int(self.monster.d_frame)].clip_draw(0, 0, 100, 100, x, y + 30, 200, 400)
         if face == 0:
             if int(self.monster.frame) == 2:
                 self.monster.image[int(self.monster.frame)].clip_draw(0, 0, 395, 141, x, y, 450, 150)
@@ -202,6 +210,9 @@ class Boss:
     image.append(None)
     image.append(None)
     image.append(None)
+    d_image = []
+    d_image.append(None)
+    d_image.append(None)
     def __init__(self, num, path=None):
         self.num = num
         col = num % 10
@@ -218,7 +229,9 @@ class Boss:
         self.state_machine = None
         self.Atk = 100
         self.frame = 0
+        self.d_frame = 0
         self.face_dir = 0
+        self.damaged = True
         self.target = None
         self.font = load_font('ENCR10B.TTF', 30)
         # path: list of (x,y) coords — 몬스터는 이 경로를 따라감
@@ -230,6 +243,8 @@ class Boss:
             self.image[0] = load_image('greybear_01.png')
             self.image[1] = load_image('greybear_02.png')
             self.image[2] = load_image('greybear_03.png')
+            self.d_image[0] = load_image('kar_eff01.png')
+            self.d_image[1] = load_image('kar_eff02.png')
         self.IDLE = Idle(self)
         self.ATK = Atack_state(self)
 
@@ -419,7 +434,7 @@ class Boss:
     def draw(self):
         self.state_machine.draw()
         for i in range(int((self.Hp / 5000) * 100 // 10)):
-            self.font.draw(self.x - 50 + i * 10, self.y + 80, f'/', (100, 250, 100))
+            self.font.draw(self.x - 50 + i * 10, self.y + 80, f'/', (250, 0, 0))
 
     def get_bb(self):
         return self.x - 50, self.y - 50, self.x + 50, self.y + 50

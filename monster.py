@@ -35,10 +35,14 @@ class Idle:
         else:
             # 경로가 있으면 애니메이션만 업데이트 (이동은 update()의 경로 로직에서 처리)
             self.monster.frame = (self.monster.frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time) % 2
+        if self.monster.damaged:
+            self.monster.d_frame = (self.monster.d_frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time) % 2
     def draw(self):
         x = self.monster.x
         y = self.monster.y + 30
         face = getattr(self.monster, 'face_dir', 0)
+        if self.monster.damaged:
+            self.monster.d_image[int(self.monster.d_frame)].clip_draw(0, 0, 100, 100, self.monster.x,self.monster.y + 30, 150, 150)
         if face == 0:
             self.monster.image[int(self.monster.frame)].clip_draw(0, 0, 100, 100, x, y, 150, 150)
         else:
@@ -87,6 +91,8 @@ class Atack_state:
             pass
     def do(self):
         self.monster.frame = (self.monster.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 3
+        if self.monster.damaged:
+            self.monster.d_frame = (self.monster.d_frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time)%2
         target = getattr(self.monster, 'target', None)
 
         # 대상이 없거나 충돌이 끊기면 SEPARATE 발생
@@ -187,6 +193,8 @@ class Atack_state:
         x = self.monster.x
         y = self.monster.y + 30
         face = getattr(self.monster, 'face_dir', 0)
+        if self.monster.damaged:
+            self.monster.d_image[int(self.monster.d_frame)].clip_draw(0, 0, 100, 100, self.monster.x, self.monster.y + 30, 150, 150)
         if face == 0:
             self.monster.image[int(self.monster.frame)].clip_draw(0, 0, 100, 100, x, y, 150, 150)
         else:
@@ -197,6 +205,9 @@ class Monster:
     image.append(None)
     image.append(None)
     image.append(None)
+    d_image = []
+    d_image.append(None)
+    d_image.append(None)
     def __init__(self, num, path=None):
         self.num = num
         col = num % 10
@@ -216,7 +227,8 @@ class Monster:
         self.face_dir = 0
         self.target = None
         self.font = load_font('ENCR10B.TTF', 30)
-
+        self.damaged = True
+        self.d_frame = 0
         # path: list of (x,y) coords — 몬스터는 이 경로를 따라감
         self.path = path if path is not None else None
         self.path_idx = 0
@@ -226,6 +238,8 @@ class Monster:
             self.image[0] = load_image('brownbear_01.png')
             self.image[1] = load_image('brownbear_02.png')
             self.image[2] = load_image('brownbear_03.png')
+            self.d_image[0] = load_image('kar_eff01.png')
+            self.d_image[1] = load_image('kar_eff02.png')
         self.IDLE = Idle(self)
         self.ATK = Atack_state(self)
 
@@ -343,6 +357,8 @@ class Monster:
                 game_world.remove_collision_object(self)
             except Exception:
                 pass
+
+
     def die(self):
         try:
             blocked = getattr(self, '_blocked_by', None)
@@ -415,7 +431,7 @@ class Monster:
     def draw(self):
         self.state_machine.draw()
         for i in range(int((self.Hp / 300) * 100 // 10)):
-            self.font.draw(self.x - 50 + i * 10, self.y + 80, f'/', (100, 250, 100))
+            self.font.draw(self.x - 50 + i * 10, self.y + 120, f'/', (250, 0, 0))
 
     def get_bb(self):
         return self.x - 50, self.y - 50, self.x + 50, self.y + 50

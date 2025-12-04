@@ -372,7 +372,7 @@ def _check_defeat_by_monster_enter_goal():
     except Exception:
         pass
 
-whole_mon = 10
+whole_mon = 1
 
 def update():
     global _last_spawn_time, _spawn_index
