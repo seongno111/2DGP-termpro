@@ -12,6 +12,7 @@ class Tile:
     image_third = None
     image_forth = None
     s_image = None
+    d_image = None
     frame = 0
     TILE_W = 100
     TILE_H = 100
@@ -28,6 +29,8 @@ class Tile:
             self.image_forth = load_image('de_place.png')
         if self.s_image is None and self.depth == 4:
             self.s_image = load_image('special_tile_recover.png')
+        if self.d_image is None and self.depth == 5:
+            self.d_image = load_image('special_tile_damage.png')
 
     def draw(self):
         canvas_h = get_canvas_height()
@@ -42,6 +45,8 @@ class Tile:
             self.image_second.clip_draw(0, 0, 47, 65, x, y, 100, 160)
         elif self.depth == 4:
             self.s_image.clip_draw(0, 0, 100, 100, x, y)
+        elif self.depth == 5:
+            self.d_image.clip_draw(0, 0, 100, 100, x, y)
         if self.depth == 2:
             self.image_first.clip_draw(0, 0, 100, 100, x, y)
             self.image_third.clip_composite_draw(0, 0, 78, 47, 0, 'h', x, y, 140, 160)
