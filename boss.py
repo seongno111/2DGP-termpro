@@ -231,9 +231,9 @@ class Boss:
         self.d_frame = 0
         self.face_dir = 0
         self.damaged = False
+        self.damage_timer = 0
         self.target = None
         self.font = load_font('ENCR10B.TTF', 30)
-        # path: list of (x,y) coords — 몬스터는 이 경로를 따라감
         self.path = path if path is not None else None
         self.path_idx = 0
         self.is_attacking = False
@@ -361,6 +361,31 @@ class Boss:
                 game_world.remove_collision_object(self)
             except Exception:
                 pass
+
+        dt = getattr(game_framework, 'frame_time', 0.0)
+
+        if getattr(self, 'damaged', False):
+            if dt > 0.0:
+                self.damage_timer += dt
+                DAMAGE_INTERVAL = 1.0
+                DAMAGE_PER_TICK = 100
+
+                while self.damage_timer >= DAMAGE_INTERVAL:
+                    self.damage_timer -= DAMAGE_INTERVAL
+                    try:
+                        self.Hp -= DAMAGE_PER_TICK
+                    except Exception:
+                        break
+
+                    if getattr(self, 'Hp', 0) <= 0:
+                        try:
+                            self.die()
+                        except Exception:
+                            pass
+                        break
+        else:
+            self.damage_timer = 0.0
+
     def die(self):
         try:
             blocked = getattr(self, '_blocked_by', None)
