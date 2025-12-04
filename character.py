@@ -389,128 +389,83 @@ class Character:
                     draw_rectangle(obj.x - 50, obj.y - 50, obj.x - 30, obj.y - 30, 255, 0, 0, 3, True)
                 except Exception:
                     pass
+
     def handle_event(self, event):
-        try:
-            # 마우스 좌클릭만 특별 처리
-            if getattr(event, 'type', None) == SDL_MOUSEBUTTONDOWN and getattr(event, 'button',
-                                                                               None) == SDL_BUTTON_LEFT:
-                mx, my = _get_mouse_pos(event)
-
-                # 1\) 먼저 퇴각 클릭(빨간 사각형) 판정
-                for layer in list(getattr(game_world, 'world', [])):
-                    for obj in list(layer):
-                        if obj is None:
-                            continue
-                        # 배치된 유닛으로 한정: x,y,skill 이 있고, `_placed_key` 가 존재하는 것만
-                        if not (hasattr(obj, 'x') and hasattr(obj, 'y') and hasattr(obj, 'skill')):
-                            continue
-
-                        # draw()에서 그린 빨간 사각형과 동일 범위
-                        left = obj.x - 50
-                        right = obj.x - 30
-                        bottom = obj.y - 50
-                        top = obj.y - 30
-
-                        if left <= mx <= right and bottom <= my <= top:
-                            # 이 유닛의 배치 키와 타일 인덱스 조회
-                            placed_key = getattr(obj, '_placed_key', None)
-                            placed_idx = getattr(obj, '_placed_idx', None)
-
-                            # 비용 회수: 자신의 비용 절반의 정수만큼 추가
-                            if placed_key and placed_key in self.unit_map:
-                                unit_cost = self.unit_map[placed_key].get('cost', 0)
-                                try:
-                                    self.cost += int(unit_cost / 2)
-                                except Exception:
-                                    pass
-
-                                # 배치 상태 해제
-                                try:
-                                    self.unit_placed[placed_key] = False
-                                except Exception:
-                                    pass
-
-                            # 점유 타일 해제
-                            if placed_idx is not None:
-                                try:
-                                    if placed_idx in self.occupied_tiles:
-                                        self.occupied_tiles.remove(placed_idx)
-                                except Exception:
-                                    pass
-
-                            # 유닛에 부착된 오버레이 제거
-                            try:
-                                overlay = getattr(obj, '_overlay', None)
-                                if overlay is not None:
-                                    game_world.remove_object(overlay)
-                            except Exception:
-                                pass
-
-                            # 실제 유닛 제거
-                            try:
-                                game_world.remove_object(obj)
-                            except Exception:
-                                pass
-                            try:
-                                game_world.remove_collision_object(obj)
-                            except Exception:
-                                pass
-
-                            # 퇴각 하나만 처리하고 종료
-                            return
-
-                # 2\) 스킬 발동 클릭(노란 사각형) 처리
-                sm = getattr(self, 'state_machine', None)
-                cur_state = None
-                if sm is not None:
-                    cur_state = getattr(sm, 'state', None) or getattr(sm, 'current_state', None) or getattr(sm,
-                                                                                                            'cur_state',
-                                                                                                            None)
-
-                for layer in getattr(game_world, 'world', []):
-                    for obj in list(layer):
-                        if obj is None:
-                            continue
-                        # 필요한 속성들이 있는지 확인
-                        if not (hasattr(obj, 'x') and hasattr(obj, 'y') and hasattr(obj, 'skill') and hasattr(obj,
-                                                                                                              'skill_state')):
-                            continue
-
-                        # 스킬 게이지가 가득 찬 유닛만 대상
-                        if getattr(obj, 'skill', 0) != 10:
-                            continue
-
-                        # depth 에 따라 노란 사각형 위치 결정
-                        if getattr(obj, 'depth', 0) == 0:
-                            left = obj.x - 10
-                            right = obj.x + 10
-                            bottom = obj.y + 90
-                            top = obj.y + 110
-                        elif getattr(obj, 'depth', 0) == 1:
-                            left = obj.x - 10
-                            right = obj.x + 10
-                            bottom = obj.y + 130
-                            top = obj.y + 150
-                        else:
-                            continue
-
-                        # 노란 사각형 클릭 \-> 스킬 발동
-                        if left <= mx <= right and bottom <= my <= top:
-                            try:
-                                obj.skill_state = True
-                            except Exception:
-                                pass
-                            return
-
-            # 퇴각/스킬 처리 외의 나머지 입력은 기존 상태머신으로 전달
+        def _get_mouse_pos(ev):
             try:
-                self.state_machine.handle_state_event(('INPUT', event))
+                if getattr(ev, 'type', None) == SDL_MOUSEBUTTONDOWN:
+                    return ev.button.x, get_canvas_height() - ev.button.y - 1
             except Exception:
                 pass
-
-        except Exception:
-            # 예상치 못한 예외로 게임이 멈추지 않도록 방어
             try:
-                self.state_machine.handle_state_event(('INPUT', event))
+                from sdl2 import SDL_GetMouseState
+                mx = c_int(0)
+                my = c_int(0)
+                SDL_GetMouseState(mx, my)
+                return mx.value, get_canvas_height() - my.value - 1
+            except Exception:
+                return 0, 0
+
+        # 기존 상태머신 입력 이벤트 전달(배치/선택 등)
+        try:
+            self.state_machine.handle_state_event(('INPUT', event))
+        except Exception:
+            pass
+
+        # 좌클릭이 아니면 스킬 처리 안 함
+        if getattr(event, 'type', None) != SDL_MOUSEBUTTONDOWN:
+            return
+        if getattr(event, 'button', None) != SDL_BUTTON_LEFT:
+            return
+
+        mx, my = _get_mouse_pos(event)
+        selected_unit = None
+
+        # 월드 전체를 훑어서 클릭된 유닛 1개만 선택
+        for layer in list(game_world.world):
+            for obj in list(layer):
+                if obj is None:
+                    continue
+                # 스킬 보유 유닛만 대상
+                if not (hasattr(obj, 'x') and hasattr(obj, 'y') and hasattr(obj, 'skill')):
+                    continue
+
+                try:
+                    # 각 depth 에 따른 스킬 클릭 영역
+                    if getattr(obj, 'depth', 0) == 0:
+                        left = obj.x - 10
+                        right = obj.x + 10
+                        bottom = obj.y + 90
+                        top = obj.y + 110
+                    elif getattr(obj, 'depth', 0) == 1:
+                        left = obj.x - 10
+                        right = obj.x + 10
+                        bottom = obj.y + 130
+                        top = obj.y + 150
+                    else:
+                        # 다른 depth 에서는 스킬 클릭 영역 없음
+                        continue
+                except Exception:
+                    continue
+
+                # skill 이 10이 아니면 발동 불가
+                if getattr(obj, 'skill', 0) < 10:
+                    continue
+
+                # 클릭 위치가 영역 안인지 판정
+                if left <= mx <= right and bottom <= my <= top:
+                    selected_unit = obj
+                    break
+            if selected_unit is not None:
+                break
+
+        # 실제 스킬 발동은 여기서 딱 한 번만
+        if selected_unit is not None:
+            try:
+                # 이미 켜져 있으면 다시 켜지 않음
+                if not getattr(selected_unit, 'skill_state', False):
+                    selected_unit.skill_state = True
+                    # skill 감소는 각 유닛 update() 에서만 처리
+                    # (Knight.update, Archer.update 등)
             except Exception:
                 pass

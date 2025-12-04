@@ -72,7 +72,7 @@ def _grid_neighbors(idx, cols, rows):
 
 def _build_walkable(stage_list):
     # walkable: 타일 값 1 또는 4(목표), spawn(3)도 통과시작 가능
-    return {i for i, v in enumerate(stage_list) if v in (1,3,4,5)}
+    return {i for i, v in enumerate(stage_list) if v in (1,3,4,5,6)}
 
 def _dijkstra(start_idx, goals, stage_list, cols=10):
     rows = len(stage_list) // cols

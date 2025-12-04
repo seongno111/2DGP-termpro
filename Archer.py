@@ -21,12 +21,9 @@ class Idle:
         pass
 
     def do(self):
-        self.archer.frame = (self.archer.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 5
+        self.archer.frame = (self.archer.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 2
         if self.archer.skill_state is True:
-            self.archer.skill_frame = (
-                                                  self.archer.skill_frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time) % 5
-            self.archer.frame = (self.archer.frame + (
-                        FRAMES_PER_ACTION_ac * 4) * ACTION_PER_TIME * game_framework.frame_time) % 5
+            self.archer.skill_frame = (self.archer.skill_frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time) % 5
         try:
             if getattr(self.archer, 'target', None) is None:
                 found = None

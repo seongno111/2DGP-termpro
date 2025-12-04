@@ -5,7 +5,6 @@ from pico2d import load_image, get_canvas_height, load_font
 
 import game_framework
 import game_world
-from Tile import Tile
 from state_machine import StateMachine
 
 PIXEL_PER_METER = (10.0 / 0.3)  # 10 pixel 30 cm
@@ -217,7 +216,7 @@ class Boss:
         self.num = num
         col = num % 10
         row = num // 10
-        tw, th = Tile.TILE_W, Tile.TILE_H
+        tw, th = 100, 100
         canvas_h = get_canvas_height()
         tile_cx = col * tw + tw // 2
         tile_cy = canvas_h - (row * th + th // 2)
@@ -231,7 +230,7 @@ class Boss:
         self.frame = 0
         self.d_frame = 0
         self.face_dir = 0
-        self.damaged = True
+        self.damaged = False
         self.target = None
         self.font = load_font('ENCR10B.TTF', 30)
         # path: list of (x,y) coords — 몬스터는 이 경로를 따라감
@@ -313,7 +312,7 @@ class Boss:
                     pass
                 try:
                     # 타일 높이로 depth 결정 (기존 스테이지에서 사용하던 100 또는 Tile.TILE_H 사용)
-                    tile_h = getattr(Tile, 'TILE_H', 100)
+                    tile_h = 100
                     canvas_h = get_canvas_height()
                     desired_depth = int((canvas_h - self.y) // tile_h)
                     # clamp

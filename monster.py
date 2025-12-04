@@ -42,7 +42,7 @@ class Idle:
         y = self.monster.y + 30
         face = getattr(self.monster, 'face_dir', 0)
         if self.monster.damaged:
-            self.monster.d_image[int(self.monster.d_frame)].clip_draw(0, 0, 100, 100, self.monster.x,self.monster.y + 30, 150, 150)
+            self.monster.d_image[int(self.monster.d_frame)].clip_draw(0, 0, 100, 100, self.monster.x,self.monster.y + 30, 150, 400)
         if face == 0:
             self.monster.image[int(self.monster.frame)].clip_draw(0, 0, 100, 100, x, y, 150, 150)
         else:
@@ -195,7 +195,7 @@ class Atack_state:
         y = self.monster.y + 30
         face = getattr(self.monster, 'face_dir', 0)
         if self.monster.damaged:
-            self.monster.d_image[int(self.monster.d_frame)].clip_draw(0, 0, 100, 100, self.monster.x, self.monster.y + 30, 150, 150)
+            self.monster.d_image[int(self.monster.d_frame)].clip_draw(0, 0, 100, 100, self.monster.x, self.monster.y + 30, 150, 400)
         if face == 0:
             self.monster.image[int(self.monster.frame)].clip_draw(0, 0, 100, 100, x, y, 150, 150)
         else:
@@ -228,7 +228,7 @@ class Monster:
         self.face_dir = 0
         self.target = None
         self.font = load_font('ENCR10B.TTF', 30)
-        self.damaged = True
+        self.damaged = False
         self.d_frame = 0
         # path: list of (x,y) coords — 몬스터는 이 경로를 따라감
         self.path = path if path is not None else None
