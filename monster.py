@@ -219,8 +219,8 @@ class Monster:
         tile_cy = canvas_h - (row * th + th // 2)
         self.dead = False
         self.x, self.y = tile_cx, tile_cy
-        self.Hp = 300
-        self.Def = 5
+        self.Hp = 400
+        self.Def = 20
         self.removed = False
         self.state_machine = None
         self.Atk = 50

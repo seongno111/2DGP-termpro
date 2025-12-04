@@ -73,11 +73,26 @@ class Attack:
         self.vanguard.frame = (
                                           self.vanguard.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 5
         target = getattr(self.vanguard, 'target', None)
-        # 충돌이 끊기거나 타겟이 없으면 SEPARATE 이벤트 발생
-        # 기존 game_world.collide 대신 game_world.in_attack_range 사용
-        if target is None or not game_world.in_attack_range(self.vanguard, target):
+
+        # 대상 유효성 및 범위 체크: 죽었거나 범위 밖이면 공격 종료
+        try:
+            if target is None or getattr(target, 'Hp', 0) <= 0 or not game_world.in_attack_range(self.vanguard, target):
+                # 혹시 죽었는데 world/collision에 남아있다면 한 번 더 정리
+                if target is not None and getattr(target, 'Hp', 0) <= 0:
+                    try:
+                        game_world.remove_object(target)
+                    except Exception:
+                        pass
+                    try:
+                        game_world.remove_collision_object(target)
+                    except Exception:
+                        pass
+                self.vanguard.state_machine.handle_state_event(('SEPARATE', None))
+                return
+        except Exception:
             self.vanguard.state_machine.handle_state_event(('SEPARATE', None))
             return
+
         # 공격 간격
         ATTACK_INTERVAL = 0.8
         if self.vanguard.skill > 0:
@@ -86,7 +101,10 @@ class Attack:
         if self.attack_timer >= ATTACK_INTERVAL:
             self.attack_timer -= ATTACK_INTERVAL
             dmg = max(0, self.vanguard.Atk - getattr(target, 'Def', 0))
-            target.Hp -= dmg
+            try:
+                target.Hp -= dmg
+            except Exception:
+                pass
             print(f'Knight attacked Monster dmg={dmg} target_hp={getattr(target, "Hp", "?")}')
 
             # skill이 있는 상태라면 플레이어 cost를 1 증가시킴
@@ -130,7 +148,7 @@ class Attack:
                     game_world.remove_collision_object(target)
                 except Exception:
                     pass
-                # 타겟 비우고 상태 복귀
+                # 타깃 비우고 상태 복귀
                 self.vanguard.target = None
                 self.vanguard.state_machine.handle_state_event(('SEPARATE', None))
     def draw(self):

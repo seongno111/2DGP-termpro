@@ -127,9 +127,45 @@ class Attack:
         self.dptank.frame = (self.dptank.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 4
         if self.dptank.skill_state is True:
             self.dptank.skill_frame = (self.dptank.skill_frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 5
+
         target = getattr(self.dptank, 'target', None)
 
-        # 타겟이 없거나 범위 밖이면 후보 찾기
+        # 1) 현재 타겟이 죽었거나(world에서 이미 빠졌거나) 더 이상 유효하지 않은 경우 먼저 깨끗이 정리
+        try:
+            if target is not None:
+                died = getattr(target, 'Hp', 0) <= 0
+                try:
+                    in_world = any(target in layer for layer in game_world.world)
+                except Exception:
+                    in_world = False
+
+                if died or not in_world:
+                    # 안전하게 제거 시도 (중복 호출이어도 예외 없이 넘어가게 처리)
+                    try:
+                        if hasattr(target, 'die'):
+                            target.die()
+                    except Exception:
+                        pass
+                    try:
+                        game_world.remove_object(target)
+                    except Exception:
+                        pass
+                    try:
+                        game_world.remove_collision_object(target)
+                    except Exception:
+                        pass
+                    try:
+                        if getattr(target, '_blocked_by', None) is self.dptank:
+                            target._blocked_by = None
+                            self.dptank.now_stop = max(0, self.dptank.now_stop - 1)
+                    except Exception:
+                        pass
+                    target = None
+                    self.dptank.target = None
+        except Exception:
+            pass
+
+        # 2) 아직 유효한 타겟이 없거나, 공격 범위 밖이면 새 타겟을 찾는다
         if target is None or not game_world.in_attack_range(self.dptank, target):
             new_target = self._find_blocked_target()
             if new_target is None:
@@ -138,9 +174,11 @@ class Attack:
                 self.dptank.target = new_target
                 target = new_target
             else:
+                # 정말로 더 이상 칠 수 있는 몬스터가 없으면 ATK 상태에서 빠져나온다.
                 self.dptank.state_machine.handle_state_event(('SEPARATE', None))
                 return
 
+        # 3) 실제 공격 수행
         ATTACK_INTERVAL = 0.8
         self.attack_timer += game_framework.frame_time
         if self.attack_timer >= ATTACK_INTERVAL:
@@ -151,56 +189,48 @@ class Attack:
             except Exception:
                 pass
             print(f'Dptank attacked Monster dmg={dmg} target_hp={getattr(target, "Hp", "?")}')
+
+            # 4) 공격 직후Hp<=0 이 되면 즉시 정리 후 새 타겟을 찾거나 상태 종료
             if getattr(target, 'Hp', 1) <= 0:
                 print(f'{target.__class__.__name__} died by Dptank.')
-                # 먼저 가능하면 target.die() 호출해서 몬스터 쪽 정리(특히 blocked 감소) 처리
                 try:
                     if hasattr(target, 'die'):
                         target.die()
-                    else:
-                        # fallback: 직접 제거
-                        try:
-                            game_world.remove_object(target)
-                        except Exception:
-                            pass
-                        try:
-                            game_world.remove_collision_object(target)
-                        except Exception:
-                            pass
-                        # 제거 시 now_stop 정리 (대상이 나를 막고 있었으면 감소)
-                        try:
-                            if getattr(target, '_blocked_by', None) is self.dptank:
-                                target._blocked_by = None
-                                self.dptank.now_stop = max(0, self.dptank.now_stop - 1)
-                        except Exception:
-                            pass
                 except Exception:
-                    # 안전하게 보정 시도
-                    try:
-                        if getattr(target, '_blocked_by', None) is self.dptank:
-                            target._blocked_by = None
-                            self.dptank.now_stop = max(0, self.dptank.now_stop - 1)
-                    except Exception:
-                        pass
+                    pass
+                try:
+                    game_world.remove_object(target)
+                except Exception:
+                    pass
+                try:
+                    game_world.remove_collision_object(target)
+                except Exception:
+                    pass
+                try:
+                    if getattr(target, '_blocked_by', None) is self.dptank:
+                        target._blocked_by = None
+                        self.dptank.now_stop = max(0, self.dptank.now_stop - 1)
+                except Exception:
+                    pass
 
-                # 죽인 뒤 다른 충돌 대상(블록된 대상 우선, 없으면 실제 충돌중인 대상) 있으면 전환, 없으면 SEPARATE
+                # 4-1) 다른 블록 대상 또는 충돌 대상 중에서 새 타겟 탐색
                 next_target = self._find_blocked_target()
                 if next_target is None:
                     next_target = self._find_colliding_target()
                 if next_target:
-                    # 새 타겟이 아직 blocked_by가 없다면 강제로 설정(중복 카운트 방지)
                     try:
                         if getattr(next_target, '_blocked_by', None) is None:
                             next_target._blocked_by = self.dptank
-                            # only increment now_stop if it wasn't counted already
-                            # (we can't know previous state reliably, so try to keep safe)
                             self.dptank.now_stop = min(self.dptank.stop, self.dptank.now_stop + 1)
                     except Exception:
                         pass
                     self.dptank.target = next_target
                     self.attack_timer = 0.0
-                    if self.dptank.target is None or not game_world.collide(self.dptank, self.dptank.target):
-                        self.dptank.state_machine.handle_state_event(('SEPARATE', None))
+                else:
+                    # 더 이상 유효 타겟이 없으면 공격 상태 종료
+                    self.dptank.target = None
+                    self.dptank.state_machine.handle_state_event(('SEPARATE', None))
+                    return
 
     def draw(self):
         x = self.dptank.x
@@ -236,7 +266,7 @@ class Dptank:
         self.now_stop = 0
         self.max_hp = 1500
         self.Hp = 1500
-        self.Def = 30
+        self.Def = 50
         self.Atk = 10
         self.number = 4
         self.skill = 10

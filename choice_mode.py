@@ -1,6 +1,8 @@
 import game_framework
 from pico2d import *
 import stage01
+import stage02
+import stage03
 from sdl2 import SDL_MOUSEBUTTONDOWN, SDL_BUTTON_LEFT, SDL_QUIT, SDL_GetMouseState
 from ctypes import c_int
 

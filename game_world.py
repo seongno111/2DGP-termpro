@@ -101,17 +101,30 @@ def add_collision_pair(group, a, b):
     return None
 
 def _should_send_separate(attacker, target):
-    # 실제로 이 target을 향해 공격/저지중인지 확인
+    """SEPARATE 이벤트를 보낼지 여부를 결정.
+
+    기존에는 attacker.target 이 현재 target 이 아니면 SEPARATE 를 보내지 않도록 해
+    여러 유닛이 한 몬스터를 동시에 때리거나, 다른 유닛이 막고 있는 동안에는
+    공격 상태가 풀리는 일이 없도록 했지만,
+
+    이제 요구사항에 맞게 "공격 범위(get_at_bound) 안에만 있으면"
+    다른 유닛의 블록 상태와 관계없이 계속 공격하게 만들기 위해
+    다음과 같이 조건을 단순화한다.
+    """
     try:
-        # 공격 타겟이 target 이 아니면 굳이 SEPARATE 줄 필요 없음
-        if getattr(attacker, 'target', None) is not target:
-            return False
-        # Dptank, Knight 등 유닛 쪽은 자신이 "저지"하고 있는 몬스터가 아니면 끊지 않음
-        if getattr(attacker, '_blocking_target', False):
-            return True
-        # 몬스터쪽은 자신의 target 이면 끊어도 됨
+        # 1) 공격 범위 안에 있다면 SEPARATE 를 보내지 않는다.
+        #    -> 공격 상태 유지
+        try:
+            if in_attack_range(attacker, target):
+                return False
+        except Exception:
+            # 범위 판정이 실패하면 아래 기본 규칙으로 진행
+            pass
+
+        # 2) 그 외의 경우에는 SEPARATE 를 허용해서 자연스럽게 Idle 등으로 돌아가게 한다.
         return True
     except Exception:
+        # 예외 상황에서는 보수적으로 SEPARATE 를 허용
         return True
 
 def handle_collisions():

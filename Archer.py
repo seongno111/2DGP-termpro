@@ -25,45 +25,9 @@ class Idle:
         if self.archer.skill_state is True:
             self.archer.skill_frame = (self.archer.skill_frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time) % 5
         try:
-            if getattr(self.archer, 'target', None) is None:
-                found = None
-                for layer in list(game_world.world):
-                    for obj in list(layer):
-                        # 몬스터 판별
-                        try:
-                            from monster import Monster
-                            is_monster = isinstance(obj, Monster)
-                        except Exception:
-                            is_monster = getattr(obj, '__class__', None) is not None and \
-                                         obj.__class__.__name__ == 'Monster'
-
-                        if not is_monster:
-                            continue
-                        if getattr(obj, 'Hp', 0) <= 0:
-                            continue
-
-                        # 원거리 공격 가능 범위 체크
-                        try:
-                            if game_world.in_attack_range(self.archer, obj):
-                                found = obj
-                                break
-                        except Exception:
-                            continue
-                    if found is not None:
-                        break
-
-                if found is not None:
-                    try:
-                        self.archer.target = found
-                    except Exception:
-                        pass
-                    try:
-                        # Knight와 동일 패턴: COLLIDE 이벤트로 ATK 상태 진입
-                        self.archer.state_machine.handle_state_event(
-                            ('COLLIDE', 'ARCHER:MONSTER', found)
-                        )
-                    except Exception:
-                        pass
+            # Archer는 이제 하나의 target만 고집하지 않고, Idle 상태에서는 단순히 애니메이션만 유지
+            # 실제 공격 대상 선택/타격은 Attack 상태에서 "범위 내 모든 몬스터/보스"를 순회하면서 처리한다.
+            pass
         except Exception:
             pass
 
@@ -87,8 +51,7 @@ class Attack:
     def enter(self, e):
         self.archer.frame = 0
         self.attack_timer = 0.0
-        if isinstance(e, tuple) and len(e) >= 3:
-            self.archer.target = e[2]
+        # 더 이상 단일 target을 고정하지 않음
 
     def exit(self, e):
         self.archer.frame = 0
@@ -99,56 +62,109 @@ class Attack:
         if self.archer.skill_state is True:
             self.archer.skill_frame = (self.archer.skill_frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time) % 5
             self.archer.frame = (self.archer.frame + (FRAMES_PER_ACTION_ac*4) * ACTION_PER_TIME * game_framework.frame_time) % 5
-        target = getattr(self.archer, 'target', None)
-        try:
-            removed_from_world = not any(target in layer for layer in game_world.world) if target is not None else False
-        except Exception:
-            removed_from_world = True
 
-        if (target is None) or (getattr(target, 'Hp', 1) <= 0) or removed_from_world or (not game_world.in_attack_range(self.archer, target)):
-            self.archer.target = None
-            self.archer.state_machine.handle_state_event(('SEPARATE', None))
+        # Archer는 이제 공격 범위 안에 있는 모든 Monster/Boss를 대상으로 공격한다.
+        ATTACK_INTERVAL_BASE = 0.9
+        ATTACK_INTERVAL = ATTACK_INTERVAL_BASE / 4 if self.archer.skill_state else ATTACK_INTERVAL_BASE
+        self.attack_timer += game_framework.frame_time
+        if self.attack_timer < ATTACK_INTERVAL:
+            return
+        self.attack_timer -= ATTACK_INTERVAL
+
+        atk = getattr(self.archer, 'Atk', 120)
+
+        # 이번 프레임에 실제로 타격한 대상이 있는지 / 살아있는 대상이 남아있는지 트래킹
+        last_hit_target = None
+        hit_any = False
+        alive_any = False
+
+        try:
+            for layer in list(game_world.world):
+                for obj in list(layer):
+                    # Monster / Boss 필터링
+                    try:
+                        from monster import Monster
+                        from boss import Boss
+                        if not isinstance(obj, (Monster, Boss)):
+                            continue
+                    except Exception:
+                        name = obj.__class__.__name__
+                        if name not in ('Monster', 'Boss'):
+                            continue
+
+                    # 이미 죽은(또는 제거 대상인) 객체는 월드/콜리전에서 한 번 더 정리 후 스킵
+                    if getattr(obj, 'Hp', 0) <= 0:
+                        try:
+                            game_world.remove_object(obj)
+                        except Exception:
+                            pass
+                        try:
+                            game_world.remove_collision_object(obj)
+                        except Exception:
+                            pass
+                        continue
+
+                    # 여기까지 왔으면 아직 살아있는 몬스터/보스
+                    alive_any = True
+
+                    # 공격 범위 안인지 체크
+                    try:
+                        if not game_world.in_attack_range(self.archer, obj):
+                            continue
+                    except Exception:
+                        continue
+
+                    # 데미지 적용
+                    dmg = max(0, int(atk) - getattr(obj, 'Def', 0)) if hasattr(obj, 'Hp') else 0
+                    if hasattr(obj, 'Hp'):
+                        obj.Hp -= dmg
+                    print(f'Archer multi-hit -> {obj.__class__.__name__} dmg={dmg} target_hp={getattr(obj, "Hp", "?")}')
+
+                    # 사망 처리
+                    if getattr(obj, 'Hp', 1) <= 0:
+                        print(f'{obj.__class__.__name__} died by archer.')
+                        try:
+                            game_world.remove_object(obj)
+                            obj.die()
+                        except Exception:
+                            pass
+                        try:
+                            game_world.remove_collision_object(obj)
+                        except Exception:
+                            pass
+                    else:
+                        last_hit_target = obj
+
+                    hit_any = True
+        except Exception:
+            pass
+
+        # 더 이상 살아있는 Monster/Boss 가 하나도 없으면 Idle 로 복귀
+        if not alive_any:
+            try:
+                self.archer.state_machine.handle_state_event(('SEPARATE', None))
+            except Exception:
+                pass
             return
 
-        ATTACK_INTERVAL = 0.9
-        if self.archer.skill_state is True:
-            ATTACK_INTERVAL = 0.9/4
-        self.attack_timer += game_framework.frame_time
-        if self.attack_timer >= ATTACK_INTERVAL:
-            self.attack_timer -= ATTACK_INTERVAL
-
-            # 즉시 데미지 적용 (화살 충돌 시와 동일한 계산)
-            atk = getattr(self.archer, 'Atk', 120)
-            dmg = max(0, int(atk) - getattr(target, 'Def', 0)) if hasattr(target, 'Hp') else 0
-            if hasattr(target, 'Hp'):
-                target.Hp -= dmg
-            print(f'Archer attack applied to {getattr(target, "__class__", type(target)).__name__} dmg={dmg} target_hp={getattr(target, "Hp", "?")}')
-
-            # 대상이 사망하면 월드에서 제거 시도 (원래 화살 처리와 동일하게)
-            if getattr(target, 'Hp', 1) <= 0:
-                print(f'{target.__class__.__name__} died by archer.')
-                # 몬스터 제거 및 충돌 제거
-                try:
-                    game_world.remove_object(target)
-                    target.die()
-                except Exception:
-                    pass
-                try:
-                    game_world.remove_collision_object(target)
-                except Exception:
-                    pass
-
-            # 오버레이 이펙트 생성: 대상 위에 3프레임으로 표시
+        # 이번 프레임에 범위 안에서 맞춘 대상이 하나도 없으면 Idle 로 복귀
+        if not hit_any:
             try:
-                overlay = Archer_Arrow(target=target, owner=self.archer, owner_atk=atk, life_frames=3, depth=7)
-                # 기존 오버레이가 있으면 제거
-                old = getattr(target, '_overlay', None)
+                self.archer.state_machine.handle_state_event(('SEPARATE', None))
+            except Exception:
+                pass
+
+        # 시각적인 Arrow 오버레이는 마지막으로 맞은 대상에게만 표시
+        if last_hit_target is not None:
+            try:
+                overlay = Archer_Arrow(target=last_hit_target, owner=self.archer, owner_atk=atk, life_frames=3, depth=7)
+                old = getattr(last_hit_target, '_overlay', None)
                 if old is not None:
                     try:
                         game_world.remove_object(old)
                     except Exception:
                         pass
-                target._overlay = overlay
+                last_hit_target._overlay = overlay
                 game_world.add_object(overlay, overlay.depth)
             except Exception:
                 pass
@@ -207,22 +223,21 @@ class Archer:
         self.ATK = Attack(self)
 
         def _on_collide(ev):
+            # 충돌 그 자체로 공격 상태로 들어가지만, 특정 몬스터를 고정 타깃으로 삼지는 않는다.
             return isinstance(ev, tuple) and len(ev) >= 3 and ev[0] == 'COLLIDE' and isinstance(ev[2], object)
 
         def _on_separate(ev):
             return isinstance(ev, tuple) and len(ev) >= 1 and ev[0] == 'SEPARATE'
 
-            # ATK 상태에서도 COLLIDE 이벤트를 자기 자신으로 매핑하여 "처리되지 않은 이벤트" 로그를 방지
-
         self.state_machine = StateMachine(
             self.IDLE,
             {
                 self.IDLE: {_on_collide: self.ATK},
-                self.ATK: {_on_separate: self.IDLE, _on_collide: self.ATK}  # 변경: _on_collide 추가
+                self.ATK: {_on_separate: self.IDLE, _on_collide: self.ATK}
             }
         )
+        # Archer는 더 이상 self.target을 단일 타깃으로 사용하지 않으므로 None으로만 유지
         self.target = None
-        # 화살-몬스터 충돌 그룹 미리 추가 (나중에 화살을 등록할 때 사용)
         game_world.add_collision_pair('ARCHER_ARROW:MONSTER', None, None)
 
     def get_at_bound(self):
@@ -273,15 +288,8 @@ class Archer:
         left = left.strip().upper()
         right = right.strip().upper()
 
-        # 예: ARCHER:MONSTER 그룹일 때만 처리
         if (left == 'ARCHER' and right == 'MONSTER') or (left == 'MONSTER' and right == 'ARCHER'):
-            # 이미 이 몬스터를 막고 있는 다른 유닛이 있으면 스킵 (Knight 로직과 맞추고 싶다면)
-            if getattr(other, '_blocked_by', None) is not None:
-                return
-
-            # Archer는 저지 수치(now_stop)는 없고, 단순 타겟으로만 사용한다면:
-            if getattr(self, 'target', None) is None:
-                self.target = other
+            # 다른 유닛이 이미 막고 있더라도, Archer는 "막는" 개념이 없고 단순히 공격 상태로만 전환하면 된다.
             try:
                 self.state_machine.handle_state_event(('COLLIDE', group, other))
             except Exception:
@@ -305,7 +313,7 @@ class Archer_Arrow:
         self.life_frames = max(1, int(life_frames))
         self.frame_idx = 0
         self.frame_timer = 0.0
-        # 각 프레임 지속시간 (초) — 필요시 조절
+        # 각 프레임 지속시간
         self.frame_duration = 0.06
 
         if self.image[0] is None:
@@ -313,7 +321,6 @@ class Archer_Arrow:
             self.image[1] = load_image('arrow_01_(2).png')
             self.image[2] = load_image('arrow_01_(3).png')
 
-        # 초기 위치는 대상의 좌표를 따라가도록 설정
         try:
             if self.target is not None:
                 self.x = self.target.x
@@ -327,10 +334,8 @@ class Archer_Arrow:
         if self.removed:
             return
 
-        # 대상이 없거나 월드에 더 이상 없으면 제거
         try:
             if self.target is None or not any(self.target in layer for layer in game_world.world):
-                # 참조 정리
                 try:
                     if self.target is not None and getattr(self.target, '_overlay', None) is self:
                         self.target._overlay = None
@@ -344,7 +349,6 @@ class Archer_Arrow:
                     self.removed = True
                 return
         except Exception:
-            # 안전 제거
             try:
                 if self.target is not None and getattr(self.target, '_overlay', None) is self:
                     self.target._overlay = None
@@ -358,19 +362,16 @@ class Archer_Arrow:
                 self.removed = True
             return
 
-        # 위치 업데이트: 대상 위치를 따라감
         try:
             self.x = self.target.x
             self.y = self.target.y
         except Exception:
             pass
 
-        # 프레임 타이머 증가 및 프레임 전환
         self.frame_timer += game_framework.frame_time
         if self.frame_timer >= (self.frame_idx + 1) * self.frame_duration:
             self.frame_idx += 1
 
-        # 프레임이 지정된 수를 초과하면 제거
         if self.frame_idx >= self.life_frames:
             try:
                 if self.target is not None and getattr(self.target, '_overlay', None) is self:
@@ -385,10 +386,7 @@ class Archer_Arrow:
                 self.removed = True
 
     def draw(self):
-        # 이미지 인덱스 안전 계산 (세 장 이미지 반복 가능)
         idx = min(2, int(self.frame_idx))
-        # y 오프셋을 프레임에 따라 아래로 이동 (프레임 0: 약 위, 마지막 프레임: 아래)
-        # 예: 이동량 30 픽을 프레임 수로 나눔
         total_drop = 30
         drop_per_frame = total_drop / max(1, self.life_frames)
         y_offset = total_drop - (drop_per_frame * self.frame_idx)
@@ -399,14 +397,12 @@ class Archer_Arrow:
         except Exception:
             draw_x, draw_y = self.x, self.y + 50
 
-        # 가로 반전은 원래 화살 방향 무시하고 대상 위에 고정으로 그리도록 함
         try:
             self.image[idx].clip_composite_draw(0, 0, 88, 16, math.radians(90),'h', draw_x, draw_y, 100, 20)
         except Exception:
             pass
 
     def get_bb(self):
-        # 이 오버레이는 충돌 판정이 필요 없으므로 빈 박스 반환
         return self.x, self.y, self.x, self.y
 
     def _safe_remove(self):

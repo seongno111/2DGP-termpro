@@ -213,8 +213,8 @@ class Hptank:
         self.stop = 4
         self.now_stop = 0
         self.max_hp = 2000
-        self.Hp = 1000
-        self.Def = 10
+        self.Hp = 2000
+        self.Def = 30
         self.Atk = 60
         self.number = 3
         self.skill = 10

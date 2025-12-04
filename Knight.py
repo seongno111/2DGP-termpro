@@ -23,38 +23,9 @@ class Idle:
             self.knight.skill_frame = (self.knight.skill_frame + FRAMES_PER_ACTION * (
                         ACTION_PER_TIME + 2) * game_framework.frame_time) % 6
 
-        # 자동 타겟 획득: 현재 타겟이 없을 때 월드를 스캔하여 공격범위에 들어온 몬스터가 있으면 공격 시작
+        # Idle에서는 자동으로 공격 시작 X, 충돌 시에만 Attack 상태로 진입
         try:
-            if getattr(self.knight, 'target', None) is None:
-                found = None
-                for layer in list(game_world.world):
-                    for obj in list(layer):
-                        # 몬스터 클래스 체크(있다면 더 정확), 또는 Hp 속성으로 판단
-                        try:
-                            from monster import Monster
-                            is_monster = isinstance(obj, Monster)
-                        except Exception:
-                            is_monster = getattr(obj, '__class__',
-                                                 None) is not None and obj.__class__.__name__ == 'Monster'
-
-                        if not is_monster:
-                            continue
-                        if getattr(obj, 'Hp', 0) <= 0:
-                            continue
-                        try:
-                            if game_world.in_attack_range(self.knight, obj):
-                                found = obj
-                                break
-                        except Exception:
-                            continue
-                    if found is not None:
-                        break
-                if found is not None:
-                    try:
-                        self.knight.target = found
-                        self.knight.state_machine.handle_state_event(('COLLIDE', 'KNIGHT:MONSTER', found))
-                    except Exception:
-                        pass
+            pass
         except Exception:
             pass
     def draw(self):
@@ -77,34 +48,12 @@ class Attack:
     def enter(self, e):
         self.knight.frame = 0
         self.attack_timer = 0.0
-        if isinstance(e, tuple) and len(e) >= 3:
-            # event 형태: ('COLLIDE', group, other)
-            self.knight.target = e[2]
-        # else target might already be set in handle_collision
+        # 이제는 특정 target을 고정하지 않고, Attack 상태에 있는 동안 범위 내의 모든 적을 타격
     def exit(self, e):
         # 기본 초기화
         self.knight.frame = 0
         self.attack_timer = 0.0
-        # 정리: 타겟이 이 Knight에 의해 저지된 상태면 카운트 감소 및 링크 해제
-        try:
-            tgt = getattr(self.knight, 'target', None)
-            if tgt is not None and getattr(tgt, '_blocked_by', None) is self.knight:
-                try:
-                    self.knight.now_stop = max(0, self.knight.now_stop - 1)
-                except Exception:
-                    pass
-                try:
-                    tgt._blocked_by = None
-                except Exception:
-                    pass
-                try:
-                    if getattr(tgt, 'target', None) is self.knight:
-                        tgt.target = None
-                except Exception:
-                    pass
-        except Exception:
-            pass
-        # 대상 참조 해제
+        # 넘어가며 타깃 참조 정리
         try:
             self.knight.target = None
         except Exception:
@@ -114,35 +63,71 @@ class Attack:
         self.knight.frame = (self.knight.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 5
         if self.knight.skill_state is True:
             self.knight.skill_frame = (self.knight.skill_frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time) % 6
-        target = getattr(self.knight, 'target', None)
-        # 충돌이 끊기거나 타겟이 없으면 SEPARATE 이벤트 발생
-        # 기존 game_world.collide 대신 game_world.in_attack_range 사용
-        if target is None or not game_world.in_attack_range(self.knight, target):
-            self.knight.state_machine.handle_state_event(('SEPARATE', None))
-            return
+
         # 공격 간격
         ATTACK_INTERVAL = 0.8
         self.attack_timer += game_framework.frame_time
-        if self.attack_timer >= ATTACK_INTERVAL:
-            self.attack_timer -= ATTACK_INTERVAL
-            dmg = max(0, self.knight.Atk - getattr(target, 'Def', 0))
-            target.Hp -= dmg
-            print(f'Knight attacked Monster dmg={dmg} target_hp={getattr(target, "Hp", "?")}')
-            if getattr(target, 'Hp', 1) <= 0:
-                print(f'{target.__class__.__name__} died by Knight.')
-                # 몬스터 제거 및 충돌 제거
-                try:
-                    game_world.remove_object(target)
-                    target.die()
-                except Exception:
-                    pass
-                try:
-                    game_world.remove_collision_object(target)
-                except Exception:
-                    pass
-                # 타겟 비우고 상태 복귀
-                self.knight.target = None
+        if self.attack_timer < ATTACK_INTERVAL:
+            return
+        self.attack_timer -= ATTACK_INTERVAL
+
+        atk = getattr(self.knight, 'Atk', 100)
+
+        # 저지(now_stop/stop)는 충돌 때만 증가시키고, 공격은 범위 안 모든 적에게 수행
+        hit_any = False
+        try:
+            for layer in list(game_world.world):
+                for obj in list(layer):
+                    # Monster / Boss 판별
+                    try:
+                        from monster import Monster
+                        from boss import Boss
+                        if not isinstance(obj, (Monster, Boss)):
+                            continue
+                    except Exception:
+                        name = obj.__class__.__name__
+                        if name not in ('Monster', 'Boss'):
+                            continue
+
+                    if getattr(obj, 'Hp', 0) <= 0:
+                        continue
+
+                    # 공격 범위 내인지 확인
+                    try:
+                        if not game_world.in_attack_range(self.knight, obj):
+                            continue
+                    except Exception:
+                        continue
+
+                    dmg = max(0, atk - getattr(obj, 'Def', 0))
+                    try:
+                        obj.Hp -= dmg
+                    except Exception:
+                        continue
+                    print(f'Knight multi-hit -> {obj.__class__.__name__} dmg={dmg} target_hp={getattr(obj, "Hp", "?")}')
+
+                    if getattr(obj, 'Hp', 1) <= 0:
+                        print(f'{obj.__class__.__name__} died by Knight.')
+                        try:
+                            game_world.remove_object(obj)
+                            obj.die()
+                        except Exception:
+                            pass
+                        try:
+                            game_world.remove_collision_object(obj)
+                        except Exception:
+                            pass
+                    hit_any = True
+        except Exception:
+            pass
+
+        # 더 이상 in_attack_range 안에 적이 하나도 없으면 Idle 상태로 복귀
+        if not hit_any:
+            try:
                 self.knight.state_machine.handle_state_event(('SEPARATE', None))
+            except Exception:
+                pass
+
     def draw(self):
         x = self.knight.x
         y = self.knight.y + 50
@@ -186,8 +171,8 @@ class Knight:
         self.max_hp = 1000
         self.stop = 3
         self.now_stop = 0
-        self.Hp = 500
-        self.Def = 50
+        self.Hp = 1000
+        self.Def = 20
         self.Atk = 100
         self.skill = 10
         self._skill_timer = 0.0
@@ -241,26 +226,26 @@ class Knight:
         self.target = None
 
     def on_hit_by_monster(self, attacker):
-        """몬스터에게 피격되었을 때 호출된다."""
-        # 이미 공격 중이면 굳이 Idle -> Attack 전환 시도 안 함
+        """
+        몬스터에게 피격되었을 때 호출된다.
+        기존처럼 on_hit_by_monster에서 target을 하나만 고정하지 않고,
+        Attack 상태로만 진입하게 유지해도 되지만, 여기서는 기존 기능을 유지한다.
+        """
         if self.state_machine.cur_state is self.ATK:
             return
 
-        # 공격 가능한 범위 안인지 확인
         try:
             if not game_world.in_attack_range(self, attacker):
                 return
         except Exception:
             return
 
-        # 현재 타겟이 없을 때만 이 몬스터를 타겟으로 삼고 공격 상태 진입
         if getattr(self, 'target', None) is None:
             try:
                 self.target = attacker
             except Exception:
                 pass
             try:
-                # Idle 상태에서 몬스터에게 공격받으면 ATK 상태로 넘기기 위한 이벤트
                 self.state_machine.handle_state_event(('COLLIDE', 'KNIGHT:MONSTER', attacker))
             except Exception:
                 pass
@@ -290,7 +275,6 @@ class Knight:
 
     def update(self):
         self.state_machine.update()
-        # frame_time 누적으로 1초마다 skill 감소
         try:
             dt = game_framework.frame_time
         except Exception:
@@ -322,15 +306,17 @@ class Knight:
         left = left.strip().upper()
         right = right.strip().upper()
 
-        # 충돌 처리 공통 로직: 이미 다른 유닛에 의해 저지되어 있거나
-        # 현재 now_stop이 최대이면 패스(몬스터는 지나감)
-        if getattr(other, '_blocked_by', None) is not None:
+        # 충돌 처리 공통 로직: 이미 다른 유닛에 의해 저지 중이면 pass
+        if getattr(other, '_blocked_by', None) not in (None, self):
             return
 
-        # KNIGHT와 MONSTER 간 충돌인 경우 특별 처리
+        # KNIGHT와 MONSTER 간 충돌에서만 now_stop/stop을 사용해 저지수 관리
         if (left == 'KNIGHT' and right == 'MONSTER') or (left == 'MONSTER' and right == 'KNIGHT'):
             if self.now_stop < self.stop:
-                other._blocked_by = self
+                try:
+                    other._blocked_by = self
+                except Exception:
+                    pass
                 self.now_stop += 1
                 if getattr(self, 'target', None) is None:
                     self.target = other
@@ -340,16 +326,9 @@ class Knight:
                     pass
             return
 
-        # fallback: 다른 그룹과의 충돌도 동일 규칙 적용
-        if self.now_stop < self.stop:
-            other._blocked_by = self
-            self.now_stop += 1
-            if getattr(self, 'target', None) is None:
-                self.target = other
-            try:
-                self.state_machine.handle_state_event(('COLLIDE', group, other))
-            except Exception:
-                pass
+        # 그 외 그룹은 저지수와 상관없이 단순히 Attack 상태로만 진입
+        try:
+            self.state_machine.handle_state_event(('COLLIDE', group, other))
+        except Exception:
+            pass
         return
-
-    ...
