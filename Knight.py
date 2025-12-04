@@ -20,8 +20,43 @@ class Idle:
     def do(self):
         self.knight.frame = (self.knight.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 2
         if self.knight.skill_state is True:
-            self.knight.skill_frame = (self.knight.skill_frame + FRAMES_PER_ACTION * (ACTION_PER_TIME+2) * game_framework.frame_time) % 6
-        pass
+            self.knight.skill_frame = (self.knight.skill_frame + FRAMES_PER_ACTION * (
+                        ACTION_PER_TIME + 2) * game_framework.frame_time) % 6
+
+        # 자동 타겟 획득: 현재 타겟이 없을 때 월드를 스캔하여 공격범위에 들어온 몬스터가 있으면 공격 시작
+        try:
+            if getattr(self.knight, 'target', None) is None:
+                found = None
+                for layer in list(game_world.world):
+                    for obj in list(layer):
+                        # 몬스터 클래스 체크(있다면 더 정확), 또는 Hp 속성으로 판단
+                        try:
+                            from monster import Monster
+                            is_monster = isinstance(obj, Monster)
+                        except Exception:
+                            is_monster = getattr(obj, '__class__',
+                                                 None) is not None and obj.__class__.__name__ == 'Monster'
+
+                        if not is_monster:
+                            continue
+                        if getattr(obj, 'Hp', 0) <= 0:
+                            continue
+                        try:
+                            if game_world.in_attack_range(self.knight, obj):
+                                found = obj
+                                break
+                        except Exception:
+                            continue
+                    if found is not None:
+                        break
+                if found is not None:
+                    try:
+                        self.knight.target = found
+                        self.knight.state_machine.handle_state_event(('COLLIDE', 'KNIGHT:MONSTER', found))
+                    except Exception:
+                        pass
+        except Exception:
+            pass
     def draw(self):
         x = self.knight.x
         y = self.knight.y + 50

@@ -13,14 +13,64 @@ FRAMES_PER_ACTION_ac = 5
 class Idle:
     def __init__(self, archer):
         self.archer = archer
+
     def enter(self, e):
         pass
+
     def exit(self, e):
         pass
+
     def do(self):
-        self.archer.frame = (self.archer.frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time) % 2
+        self.archer.frame = (self.archer.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 5
         if self.archer.skill_state is True:
-            self.archer.skill_frame = (self.archer.skill_frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time) % 5
+            self.archer.skill_frame = (
+                                                  self.archer.skill_frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time) % 5
+            self.archer.frame = (self.archer.frame + (
+                        FRAMES_PER_ACTION_ac * 4) * ACTION_PER_TIME * game_framework.frame_time) % 5
+        try:
+            if getattr(self.archer, 'target', None) is None:
+                found = None
+                for layer in list(game_world.world):
+                    for obj in list(layer):
+                        # 몬스터 판별
+                        try:
+                            from monster import Monster
+                            is_monster = isinstance(obj, Monster)
+                        except Exception:
+                            is_monster = getattr(obj, '__class__', None) is not None and \
+                                         obj.__class__.__name__ == 'Monster'
+
+                        if not is_monster:
+                            continue
+                        if getattr(obj, 'Hp', 0) <= 0:
+                            continue
+
+                        # 원거리 공격 가능 범위 체크
+                        try:
+                            if game_world.in_attack_range(self.archer, obj):
+                                found = obj
+                                break
+                        except Exception:
+                            continue
+                    if found is not None:
+                        break
+
+                if found is not None:
+                    try:
+                        self.archer.target = found
+                    except Exception:
+                        pass
+                    try:
+                        # Knight와 동일 패턴: COLLIDE 이벤트로 ATK 상태 진입
+                        self.archer.state_machine.handle_state_event(
+                            ('COLLIDE', 'ARCHER:MONSTER', found)
+                        )
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
+
     def draw(self):
         x = self.archer.x
         y = self.archer.y + 50
@@ -222,30 +272,24 @@ class Archer:
         return self.x - 20, self.y - 20, self.x + 20, self.y + 20
 
     def handle_collision(self, group, other):
-        try:
-            if not any(other in layer for layer in game_world.world):
-                return
-        except Exception:
-            return
-        if getattr(other, 'Hp', 1) <= 0:
-            return
-
         left, right = (group.split(':') + ['', ''])[:2]
         left = left.strip().upper()
         right = right.strip().upper()
 
+        # 예: ARCHER:MONSTER 그룹일 때만 처리
         if (left == 'ARCHER' and right == 'MONSTER') or (left == 'MONSTER' and right == 'ARCHER'):
-            if getattr(self, 'target', None) is other:
+            # 이미 이 몬스터를 막고 있는 다른 유닛이 있으면 스킵 (Knight 로직과 맞추고 싶다면)
+            if getattr(other, '_blocked_by', None) is not None:
                 return
-            self.target = other
-            self.state_machine.handle_state_event(('COLLIDE', group, other))
-            return
 
-        if getattr(self, 'target', None) is other:
+            # Archer는 저지 수치(now_stop)는 없고, 단순 타겟으로만 사용한다면:
+            if getattr(self, 'target', None) is None:
+                self.target = other
+            try:
+                self.state_machine.handle_state_event(('COLLIDE', group, other))
+            except Exception:
+                pass
             return
-        self.target = other
-        self.state_machine.handle_state_event(('COLLIDE', group, other))
-
 
 
 class Archer_Arrow:

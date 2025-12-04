@@ -118,7 +118,8 @@ class Atack_state:
                 from Knight import Knight
                 from Hptank import Hptank
                 from Vanguard import Vanguard
-                reactive_units = (Dptank, Knight, Hptank, Vanguard)
+                from Archer import Archer
+                reactive_units = (Dptank, Knight, Hptank, Vanguard, Archer)
 
                 if isinstance(target, reactive_units):
                     # 각 유닛 클래스에 on_hit_by_monster가 구현되어 있다고 가정

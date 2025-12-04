@@ -247,8 +247,9 @@ class Character:
             candidate_depth = unit_cls().depth
             print(f"DEBUG: tile_depth={tile_depth}, candidate_depth={candidate_depth}, idx={idx}")
 
-            # 허용 규칙: 동일 깊이는 항상 허용, 추가로 'candidate_depth == 0' 인 유닛은 tile_depth == 4 에도 배치 가능하게 함
-            if not (tile_depth == candidate_depth or (candidate_depth == 0 and tile_depth == 4)):
+            # 허용 규칙: 동일 깊이는 항상 허용,
+            # 추가로 'candidate_depth == 0' 인 유닛은 tile_depth == 4(타일값 5) 또는 tile_depth == 5(타일값 6) 에도 배치 가능하게 함
+            if not (tile_depth == candidate_depth or (candidate_depth == 0 and tile_depth in (4, 5))):
                 print("Depth mismatch -> cannot place here")
                 return False
 
