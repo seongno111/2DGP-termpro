@@ -174,7 +174,7 @@ class Knight:
         self.Hp = 1000
         self.Def = 20
         self.Atk = 100
-        self.skill = 10
+        self.skill = 0
         self._skill_timer = 0.0
         self.skill_state = False
         self.number = 1

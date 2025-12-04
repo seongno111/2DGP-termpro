@@ -374,6 +374,9 @@ def _check_defeat_by_monster_enter_goal():
 
 whole_mon = 10
 
+
+
+
 def update():
     global _last_spawn_time, _spawn_index
     global _result_shown, _result_start_time, _result_type, killed_monster
@@ -396,11 +399,14 @@ def update():
     # 패배(몬스터가 타일 4에 들어감) 우선 검사
     _check_defeat_by_monster_enter_goal()
 
-    # 승리(처치 수) 검사
-    if not _result_shown and killed_monster >= whole_mon:
-        _result_shown = True
-        _result_start_time = time.time()
-        _result_type = 'v'
+    # 승리(처치 수 + 실제 필드 기반) 검사
+    if not _result_shown:
+        count_ok = (killed_monster >= whole_mon)
+
+        if count_ok:
+            _result_shown = True
+            _result_start_time = now
+            _result_type = 'v'
 
     game_world.update()
 
@@ -454,5 +460,3 @@ def finish():
     v_image = None
     d_image = None
     font = None
-
-

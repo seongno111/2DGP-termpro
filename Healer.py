@@ -192,7 +192,7 @@ class Healer:
         self.number = 5
         self.tile_w = 100
         self.tile_h = 100
-        self.skill = 10
+        self.skill = 0
         self._skill_timer = 0.0
         self.skill_state = False
         self.tile_center_x = 0

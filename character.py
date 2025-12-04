@@ -204,15 +204,28 @@ class Character:
             TILE_H = 100
             COLS = 10
 
-            # 현재 로드된 스테이지 모듈을 동적으로 찾아 사용 (stage02 우선, 없으면 stage01)
             import sys
 
             stage_module = None
-            # stage03 -> stage02 -> stage01 순으로 이미 로드된 모듈을 탐색
+            # 1순위: 이 Character 인스턴스를 가진 stage 모듈을 찾는다.
             for mod_name in ('stage03', 'stage02', 'stage01'):
-                if mod_name in sys.modules:
-                    stage_module = sys.modules[mod_name]
+                mod = sys.modules.get(mod_name)
+                if not mod:
+                    continue
+                try:
+                    ch = getattr(mod, 'character', None)
+                except Exception:
+                    ch = None
+                if ch is self:
+                    stage_module = mod
                     break
+
+            # 2순위: 기존처럼 로드된 모듈 중 하나를 사용하되, 위에서 못 찾았을 때만
+            if stage_module is None:
+                for mod_name in ('stage03', 'stage02', 'stage01'):
+                    if mod_name in sys.modules:
+                        stage_module = sys.modules[mod_name]
+                        break
 
             # 어떤 스테이지도 로드되지 않았다면 기본값으로 stage01 사용
             if stage_module is None:
@@ -245,7 +258,7 @@ class Character:
             tile_depth = stage_module.stage_temp[idx] - 1
             unit_cls = self.unit_map[self.placing_unit]['class']
             candidate_depth = unit_cls().depth
-            print(f"DEBUG: tile_depth={tile_depth}, candidate_depth={candidate_depth}, idx={idx}")
+            print(f"DEBUG: tile_depth={tile_depth}, candidate_depth={candidate_depth}, idx={idx}, stage={stage_module.__name__}")
 
             # 허용 규칙: 동일 깊이는 항상 허용,
             # 추가로 'candidate_depth == 0' 인 유닛은 tile_depth == 4(타일값 5) 또는 tile_depth == 5(타일값 6) 에도 배치 가능하게 함
@@ -406,22 +419,96 @@ class Character:
             except Exception:
                 return 0, 0
 
-        # 기존 상태머신 입력 이벤트 전달(배치/선택 등)
+        # 1) 기존 상태머신 입력 이벤트 전달(배치/선택 등)
         try:
             self.state_machine.handle_state_event(('INPUT', event))
         except Exception:
             pass
 
-        # 좌클릭이 아니면 스킬 처리 안 함
+        # 2) 마우스 좌클릭이 아닌 경우 추가 처리 없음
         if getattr(event, 'type', None) != SDL_MOUSEBUTTONDOWN:
             return
         if getattr(event, 'button', None) != SDL_BUTTON_LEFT:
             return
 
         mx, my = _get_mouse_pos(event)
+
+        # 3) 먼저 "퇴각" 영역(각 유닛 좌하단 빨간 사각형)을 클릭했는지 검사
+        retreat_target = None
+        for layer in list(getattr(game_world, 'world', [])):
+            for obj in list(layer):
+                if obj is None:
+                    continue
+                # 배치된 유닛만 대상: x,y,skill 을 가진 depth 0 또는 1 유닛
+                if not (hasattr(obj, 'x') and hasattr(obj, 'y') and hasattr(obj, 'skill')):
+                    continue
+                try:
+                    # draw()에서 그렸던 좌하단 빨간 사각형과 동일한 영역
+                    left = obj.x - 50
+                    bottom = obj.y - 50
+                    right = obj.x - 30
+                    top = obj.y - 30
+                except Exception:
+                    continue
+
+                if left <= mx <= right and bottom <= my <= top:
+                    retreat_target = obj
+                    break
+            if retreat_target is not None:
+                break
+
+        if retreat_target is not None:
+            # 퇴각 처리: cost//2 반환, 유닛/오버레이 및 충돌 제거, 타일/배치 상태 정리
+            unit = retreat_target
+            try:
+                # 어떤 키로 배치되었는지 (_placed_key)가 있으면 그 키의 cost 기준으로 환급
+                placed_key = getattr(unit, '_placed_key', None)
+                if placed_key and placed_key in self.unit_map:
+                    unit_cost = self.unit_map[placed_key].get('cost', 0)
+                    refund = unit_cost // 2
+                    self.cost += refund
+                    # 하나만 배치 가능한 유닛이면 배치 상태도 해제
+                    if placed_key in self.unit_placed:
+                        self.unit_placed[placed_key] = False
+                # _placed_idx 가 있다면 occupied_tiles 집합에서 제거
+                idx = getattr(unit, '_placed_idx', None)
+                if idx is not None and idx in self.occupied_tiles:
+                    self.occupied_tiles.discard(idx)
+            except Exception:
+                pass
+
+            # world/collision/overlay 에서 안전하게 제거
+            try:
+                overlay = getattr(unit, '_overlay', None)
+                if overlay is not None:
+                    try:
+                        game_world.remove_object(overlay)
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+            try:
+                game_world.remove_object(unit)
+            except Exception:
+                pass
+            try:
+                game_world.remove_collision_object(unit)
+            except Exception:
+                pass
+
+            # 유닛 쪽에 별도 clean-up 메서드가 있다면 호출
+            try:
+                if hasattr(unit, 'die'):
+                    unit.die()
+            except Exception:
+                pass
+
+            return  # 퇴각 클릭이면 여기서 종료 (스킬 클릭은 처리하지 않음)
+
+        # 4) 퇴각이 아니라면 기존 스킬 클릭 처리 수행
         selected_unit = None
 
-        # 월드 전체를 훑어서 클릭된 유닛 1개만 선택
+        # 월드 전체를 훑어서 스킬 영역을 클릭한 유닛 1개만 선택
         for layer in list(game_world.world):
             for obj in list(layer):
                 if obj is None:
@@ -462,10 +549,9 @@ class Character:
         # 실제 스킬 발동은 여기서 딱 한 번만
         if selected_unit is not None:
             try:
-                # 이미 켜져 있으면 다시 켜지 않음
+                # 이미 켜져 있으면 다시 켜지지 않음
                 if not getattr(selected_unit, 'skill_state', False):
                     selected_unit.skill_state = True
                     # skill 감소는 각 유닛 update() 에서만 처리
-                    # (Knight.update, Archer.update 등)
             except Exception:
                 pass

@@ -217,7 +217,7 @@ class Hptank:
         self.Def = 30
         self.Atk = 60
         self.number = 3
-        self.skill = 10
+        self.skill = 0
         self._skill_timer = 0.0
         self.skill_state = False
         self.tile_w = 100

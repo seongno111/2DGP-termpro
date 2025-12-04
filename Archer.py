@@ -197,7 +197,7 @@ class Archer:
         self.Def = 10
         self.Atk = 120
         self.number = 2
-        self.skill = 10
+        self.skill = 0
         self._skill_timer = 0.0
         self.skill_state = False
         self.tile_w = 100

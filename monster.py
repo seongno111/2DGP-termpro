@@ -414,7 +414,7 @@ class Monster:
         try:
             import sys
             incremented = False
-            for mod_name in ('stage01', 'stage02'):
+            for mod_name in ('stage01', 'stage02', 'stage03'):
                 mod = sys.modules.get(mod_name)
                 if not mod:
                     continue
@@ -435,8 +435,8 @@ class Monster:
                         pass
 
             if not incremented:
-                # 폴백: stage02 먼저, 없으면 stage01
-                for fb in ('stage02', 'stage01'):
+                # 폴백: stage03 -> stage02 -> stage01 순으로 killed_monster 증가
+                for fb in ('stage03', 'stage02', 'stage01'):
                     try:
                         mod = __import__(fb)
                         mod.killed_monster = getattr(mod, 'killed_monster', 0) + 1
