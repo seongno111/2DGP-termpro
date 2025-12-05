@@ -3,6 +3,7 @@ from pico2d import load_image, load_font
 import game_framework
 import game_world
 from state_machine import StateMachine
+from link_helper import update_link_states_for_hptank_healer
 
 
 TIME_PER_ACTION = 0.8
@@ -198,6 +199,7 @@ class Hptank:
     image = []
     at_image = []
     sk_image = []
+    image_l = None
     for i in range(8):
         image.append(None)
     for i in range(3):
@@ -220,6 +222,7 @@ class Hptank:
         self.skill = 0
         self._skill_timer = 0.0
         self.skill_state = False
+        self.linked = False
         self.tile_w = 100
         self.tile_h = 100
         self.tile_center_x = 0
@@ -245,7 +248,8 @@ class Hptank:
             self.sk_image[5] = load_image('klat_skill6.png')
             self.sk_image[6] = load_image('klat_skill7.png')
             self.sk_image[7] = load_image('klat_skill8.png')
-
+        if self.image_l is None:
+            self.image_l = load_image('klat_link.png')
         self.IDLE = Idle(self)
         self.ATK = Attack(self)
 
@@ -363,6 +367,18 @@ class Hptank:
             dt = game_framework.frame_time
         except Exception:
             dt = 0.0
+
+        # Hptank-Healer 링크 상태 자동 갱신
+        try:
+            update_link_states_for_hptank_healer()
+        except Exception:
+            pass
+
+        # 링크 상태에 따라 저지 수 stop 조정
+        if getattr(self, 'linked', False):
+            self.stop = 10
+        else:
+            self.stop = 4
 
         if self.skill_state is True:
             self._skill_timer += dt

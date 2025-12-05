@@ -67,3 +67,37 @@ def update_link_states_for_dptank_vanguard():
         u.linked = True
     for u in vgs:
         u.linked = True
+
+
+def update_link_states_for_hptank_healer():
+    """Hptank와 Healer가 동시에 필드에 존재하면 거리와 상관없이 서로 linked 를 True 로 맞춘다.
+
+    다른 링크 함수들처럼 클래스 이름 문자열로 타입을 구분해
+    import 순환 문제를 피한다.
+    """
+    try:
+        hps = []
+        heals = []
+        for layer in game_world.world:
+            for obj in layer:
+                name = obj.__class__.__name__
+                if name == 'Hptank':
+                    hps.append(obj)
+                elif name == 'Healer':
+                    heals.append(obj)
+    except Exception:
+        return
+
+    # 둘 중 하나라도 없으면 둘 다 False
+    if not hps or not heals:
+        for u in hps:
+            u.linked = False
+        for u in heals:
+            u.linked = False
+        return
+
+    # 둘 다 하나 이상 존재하면 전부 링크 ON
+    for u in hps:
+        u.linked = True
+    for u in heals:
+        u.linked = True

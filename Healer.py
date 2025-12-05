@@ -3,6 +3,7 @@ from pico2d import load_image
 import game_framework
 import game_world
 from state_machine import StateMachine
+from link_helper import update_link_states_for_hptank_healer
 
 HEAL_INTERVAL = 0.8
 heal_timer = 0.0
@@ -33,7 +34,31 @@ class Idle:
             return
         self.healer.scan_timer = 0.0
 
-        # 범위 스캔: 대상 발견 시 먼저 healer.target에 할당하고 로그 출력 후 이벤트 전송
+        # 1순위: 링크 상태일 때 Hptank 는 거리 제한 없이 항상 힐 대상 후보
+        hptank_always = None
+        if getattr(self.healer, 'linked', False):
+            for layer in game_world.world:
+                for obj in layer[:]:
+                    if obj is self.healer:
+                        continue
+                    if obj.__class__.__name__ != 'Hptank':
+                        continue
+                    if not hasattr(obj, 'Hp') or not hasattr(obj, 'max_hp'):
+                        continue
+                    if getattr(obj, 'Hp', 0) >= getattr(obj, 'max_hp', 0):
+                        continue
+                    hptank_always = obj
+                    break
+                if hptank_always is not None:
+                    break
+
+        if hptank_always is not None:
+            self.healer.target = hptank_always
+            print(f'Healer.IDLE(linked) -> Hptank always target Hp={hptank_always.Hp}/{hptank_always.max_hp}')
+            self.healer.state_machine.handle_state_event(('COLLIDE', 'HEALER:HPTANK', hptank_always))
+            return
+
+        # 2순위: 그 외 유닛들은 기존처럼 공격(힐) 범위 안에 있을 때만 힐
         for layer in game_world.world:
             for obj in layer[:]:
                 if obj is self.healer:
@@ -47,7 +72,6 @@ class Idle:
                 except Exception:
                     in_range = False
                 if in_range:
-                    # 선할당(이벤트와 상태 진입 시 race 예방), 디버그 출력
                     self.healer.target = obj
                     print(f'Healer.IDLE -> found target={obj.__class__.__name__} Hp={getattr(obj,"Hp", "?")}/{getattr(obj,"max_hp", "?")} in_range={in_range}')
                     self.healer.state_machine.handle_state_event(('COLLIDE', 'HEALER:UNIT', obj))
@@ -92,7 +116,7 @@ class Heal:
             self.healer.state_machine.handle_state_event(('SEPARATE', None))
             return
 
-        # (중략) 유효성/범위 체크는 기존과 동일하게 처리...
+        # 유효성 체크: 월드에 남아있는지
         try:
             in_world = any(target in layer for layer in game_world.world)
         except Exception:
@@ -103,16 +127,17 @@ class Heal:
             self.healer.state_machine.handle_state_event(('SEPARATE', None))
             return
 
-        try:
-            in_range = game_world.in_attack_range(self.healer, target)
-        except Exception as ex:
-            in_range = False
-            print(f'Healer.HEAL.do: in_attack_range raised {ex}')
-
-        if not in_range:
-            print('Healer.HEAL.do: not in range -> SEPARATE')
-            self.healer.state_machine.handle_state_event(('SEPARATE', None))
-            return
+        # 링크 상태 + Hptank 라면 거리 제한 없이 힐, 그 외에는 기존처럼 범위 체크
+        if not (getattr(self.healer, 'linked', False) and target.__class__.__name__ == 'Hptank'):
+            try:
+                in_range = game_world.in_attack_range(self.healer, target)
+            except Exception as ex:
+                in_range = False
+                print(f'Healer.HEAL.do: in_attack_range raised {ex}')
+            if not in_range:
+                print('Healer.HEAL.do: not in range -> SEPARATE')
+                self.healer.state_machine.handle_state_event(('SEPARATE', None))
+                return
 
         if getattr(target, 'Hp', 0) >= getattr(target, 'max_hp', 0):
             print('Healer.HEAL.do: target full HP -> SEPARATE')
@@ -175,6 +200,7 @@ class Heal:
 class Healer:
     image = []
     sk_image = []
+    image_l = None
     for i in range(7):
         image.append(None)
     for i in range(3):
@@ -195,6 +221,7 @@ class Healer:
         self.skill = 0
         self._skill_timer = 0.0
         self.skill_state = False
+        self.linked = False
         self.tile_center_x = 0
         self.tile_center_y = 0
         if self.image[0] is None:
@@ -208,7 +235,8 @@ class Healer:
 
             self.sk_image[0] = load_image('luna_skill1.png')
             self.sk_image[1] = load_image('luna_skill2.png')
-
+        if self.image_l is None:
+            self.image_l = load_image('luna_link.png')
         self.HEAL_INTERVAL = HEAL_INTERVAL
         self.heal_timer = 0.0
 
@@ -255,6 +283,12 @@ class Healer:
             dt = game_framework.frame_time
         except Exception:
             dt = 0.0
+
+        # Hptank-Healer 링크 상태 자동 갱신
+        try:
+            update_link_states_for_hptank_healer()
+        except Exception:
+            pass
 
         if self.skill_state is True:
             self._skill_timer += dt
