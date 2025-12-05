@@ -22,18 +22,18 @@ class Tile:
         self.index = index
         self.depth = depth
         if self.image_first is None and self.image_second is None:
-            self.image_first = load_image('ground.png')
-            self.image_second = load_image('floor_nd.png')
+            self.image_first = load_image('tile/ground.png')
+            self.image_second = load_image('tile/floor_nd.png')
         if self.image_third is None and self.depth == 2:
-            self.image_first = load_image('ground.png')
-            self.image_third = load_image('cave.png')
+            self.image_first = load_image('tile/ground.png')
+            self.image_third = load_image('tile/cave.png')
         if self.image_forth is None and self.depth == 3 :
-            self.image_first = load_image('ground.png')
-            self.image_forth = load_image('de_place.png')
+            self.image_first = load_image('tile/ground.png')
+            self.image_forth = load_image('tile/de_place.png')
         if self.s_image is None and self.depth == 4:
-            self.s_image = load_image('special_tile_recover.png')
+            self.s_image = load_image('tile/special_tile_recover.png')
         if self.d_image is None and self.depth == 5:
-            self.d_image = load_image('special_tile_damage.png')
+            self.d_image = load_image('tile/special_tile_damage.png')
 
     def draw(self):
         canvas_h = get_canvas_height()

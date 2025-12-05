@@ -67,9 +67,9 @@ def init():
     monster_killed = 0
     # 이미지/폰트는 여기서 로드 (캔버스 준비 후 안전)
     if v_image is None:
-        v_image = load_image('victory.png')
+        v_image = load_image('ui/victory.png')
     if d_image is None:
-        d_image = load_image('defeat.png')
+        d_image = load_image('ui/defeat.png')
     if font is None:
         font = load_font('ENCR10B.TTF', 20)
 
@@ -230,8 +230,31 @@ def draw():
 
 def finish():
     global character, v_image, d_image, font
+    global killed_monster, monster_num
+    global _spawn_index, _last_spawn_time, _spawn_positions, _spawn_interval
+    global _result_shown, _result_start_time, _result_type, _monsters_list
+
+    # 월드 비우기
     game_world.clear()
+
+    # 플레이어/리소스 초기화
     character = None
     v_image = None
     d_image = None
     font = None
+
+    # 몬스터 관련 카운터 초기화
+    monster_num = 0
+    killed_monster = 0
+
+    # 스폰 관련 상태 초기화
+    _spawn_index = 0
+    _last_spawn_time = 0.0
+    _spawn_positions = []
+    _spawn_interval = 4.0
+
+    # 결과/몬스터 리스트 초기화
+    _result_shown = False
+    _result_start_time = 0.0
+    _result_type = None
+    _monsters_list = []

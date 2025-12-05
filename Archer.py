@@ -209,21 +209,21 @@ class Archer:
         self.tile_center_y = 0
         self.font = load_font('ENCR10B.TTF', 30)
         if self.image[0] is None:
-            self.image[0] = load_image('isli01_01.png')
-            self.image[1] = load_image('isli01_02.png')
-            self.image[2] = load_image('isli01_03.png')
-            self.image[3] = load_image('isli01_04.png')
-            self.image[4] = load_image('isli01_05.png')
-            self.image[5] = load_image('isli01_06.png')
-            self.image[6] = load_image('isli01_07.png')
+            self.image[0] = load_image('char/isli01_01.png')
+            self.image[1] = load_image('char/isli01_02.png')
+            self.image[2] = load_image('char/isli01_03.png')
+            self.image[3] = load_image('char/isli01_04.png')
+            self.image[4] = load_image('char/isli01_05.png')
+            self.image[5] = load_image('char/isli01_06.png')
+            self.image[6] = load_image('char/isli01_07.png')
         if self.image_sk[0] is None:
-            self.image_sk[0] = load_image('isli_skill01.png')
-            self.image_sk[1] = load_image('isli_skill02.png')
-            self.image_sk[2] = load_image('isli_skill03.png')
-            self.image_sk[3] = load_image('isli_skill04.png')
-            self.image_sk[4] = load_image('isli_skill05.png')
+            self.image_sk[0] = load_image('char/isli_skill01.png')
+            self.image_sk[1] = load_image('char/isli_skill02.png')
+            self.image_sk[2] = load_image('char/isli_skill03.png')
+            self.image_sk[3] = load_image('char/isli_skill04.png')
+            self.image_sk[4] = load_image('char/isli_skill05.png')
         if self.image_l is None:
-            self.image_l = load_image('isli_link.png')
+            self.image_l = load_image('char/isli_link.png')
         self.IDLE = Idle(self)
         self.ATK = Attack(self)
 
@@ -334,9 +334,9 @@ class Archer_Arrow:
         self.frame_duration = 0.06
 
         if self.image[0] is None:
-            self.image[0] = load_image('arrow_01_(1).png')
-            self.image[1] = load_image('arrow_01_(2).png')
-            self.image[2] = load_image('arrow_01_(3).png')
+            self.image[0] = load_image('char/arrow_01_(1).png')
+            self.image[1] = load_image('char/arrow_01_(2).png')
+            self.image[2] = load_image('char/arrow_01_(3).png')
 
         try:
             if self.target is not None:

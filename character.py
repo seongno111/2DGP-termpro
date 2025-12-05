@@ -118,17 +118,17 @@ class Character:
 
         # portraits 로드(한번만)
         if self.k_p_image is None:
-            self.k_p_image = load_image('Knight_portrait.png')
+            self.k_p_image = load_image('char/Knight_portrait.png')
         if self.a_p_image is None:
-            self.a_p_image = load_image('Archer_portrait.png')
+            self.a_p_image = load_image('char/Archer_portrait.png')
         if self.h_p_image is None:
-            self.h_p_image = load_image('Hptank_portrait.png')
+            self.h_p_image = load_image('char/Hptank_portrait.png')
         if self.d_p_image is None:
-            self.d_p_image = load_image('Dptank_portrait.png')
+            self.d_p_image = load_image('char/Dptank_portrait.png')
         if self.s_p_image is None:
-            self.s_p_image = load_image('Healer_portrait.png')
+            self.s_p_image = load_image('char/Healer_portrait.png')
         if self.v_p_image is None:
-            self.v_p_image = load_image('Vanguard_portrait.png')
+            self.v_p_image = load_image('char/Vanguard_portrait.png')
 
         # 기본 순서
         full_keys_order = ['knight','archer','hptank','dptank','healer','vanguard']
@@ -397,16 +397,17 @@ class Character:
                 if not (hasattr(obj, 'x') and hasattr(obj, 'y') and hasattr(obj, 'skill')):
                     continue
                 try:
+                    can_use_skill = (getattr(obj, 'skill', 0) >= 10 and not getattr(obj, 'skill_state', False))
                     # depth 에 따라 스킬/퇴각 UI 위치 조정
                     if getattr(obj, 'depth', 0) == 0:
-                        if getattr(obj, 'skill', 0) == 10:
+                        # 스킬 버튼: skill==10 이고 아직 발동 중이 아닐 때만 노란 버튼 그리기
+                        if can_use_skill:
                             draw_rectangle(obj.x - 10, obj.y + 90, obj.x + 10, obj.y + 110, 255, 215, 0, 3, True)
-                        # depth 0 퇴각 버튼: 기존 y - 10 ~ y + 10 에서 40 아래로 → y - 50 ~ y - 30
+                        # depth 0 퇴각 버튼
                         draw_rectangle(obj.x - 50, obj.y - 50, obj.x - 30, obj.y - 30, 255, 0, 0, 3, True)
                     elif getattr(obj, 'depth', 0) == 1:
-                        if getattr(obj, 'skill', 0) == 10:
+                        if can_use_skill:
                             draw_rectangle(obj.x - 10, obj.y + 130, obj.x + 10, obj.y + 150, 255, 215, 0, 3, True)
-                        # depth 1 유닛은 그대로 y - 10 ~ y + 10 유지
                         draw_rectangle(obj.x - 50, obj.y - 10, obj.x - 30, obj.y + 10, 255, 0, 0, 3, True)
                     else:
                         # 다른 depth 는 퇴각 버튼을 그리지 않음

@@ -239,11 +239,11 @@ class Boss:
         self.is_attacking = False
 
         if self.image[0] is None:
-            self.image[0] = load_image('greybear_01.png')
-            self.image[1] = load_image('greybear_02.png')
-            self.image[2] = load_image('greybear_03.png')
-            self.d_image[0] = load_image('kar_eff01.png')
-            self.d_image[1] = load_image('kar_eff02.png')
+            self.image[0] = load_image('mob/greybear_01.png')
+            self.image[1] = load_image('mob/greybear_02.png')
+            self.image[2] = load_image('mob/greybear_03.png')
+            self.d_image[0] = load_image('mob/kar_eff01.png')
+            self.d_image[1] = load_image('mob/kar_eff02.png')
         self.IDLE = Idle(self)
         self.ATK = Atack_state(self)
 

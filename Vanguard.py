@@ -286,6 +286,7 @@ class Vanguard:
         self.Hp = 700
         self.Def = 10
         self.Atk = 60
+        self.skill_state = True
         self.skill = 15
         self._skill_timer = 0.0
         self.number = 6
@@ -298,26 +299,26 @@ class Vanguard:
 
         if self.image[0] is None:
             try:
-                self.image[0] = load_image('asha01_01.png')
-                self.image[1] = load_image('asha01_02.png')
-                self.image[2] = load_image('asha01_03.png')
-                self.image[3] = load_image('asha01_04.png')
-                self.image[4] = load_image('asha01_05.png')
-                self.image[5] = load_image('asha01_06.png')
-                self.image[6] = load_image('asha01_07.png')
+                self.image[0] = load_image('char/asha01_01.png')
+                self.image[1] = load_image('char/asha01_02.png')
+                self.image[2] = load_image('char/asha01_03.png')
+                self.image[3] = load_image('char/asha01_04.png')
+                self.image[4] = load_image('char/asha01_05.png')
+                self.image[5] = load_image('char/asha01_06.png')
+                self.image[6] = load_image('char/asha01_07.png')
             except Exception:
                 pass
         if self.image_l is None:
-            self.image_l = load_image('asha_link.png')
+            self.image_l = load_image('char/asha_link.png')
         if self.image_at[0] is None:
             try:
-                self.image_at[0] = load_image('va_at_ef_01.png')
-                self.image_at[1] = load_image('va_at_ef_02.png')
-                self.image_at[2] = load_image('va_at_ef_03.png')
+                self.image_at[0] = load_image('char/va_at_ef_01.png')
+                self.image_at[1] = load_image('char/va_at_ef_02.png')
+                self.image_at[2] = load_image('char/va_at_ef_03.png')
             except Exception:
                 self.image_at = []
         if self.image_s is None:
-            self.image_s = load_image('asha_skill.png')
+            self.image_s = load_image('char/asha_skill.png')
 
         self.IDLE = Idle(self)
         self.ATK = Attack(self)

@@ -20,7 +20,7 @@ def init():
     global running
     global logo_start_time
     global next_stage
-    image = load_image('choice.png')
+    image = load_image('ui/choice.png')
     running = True
     logo_start_time = get_time()
     # 기본값은 stage01로 설정

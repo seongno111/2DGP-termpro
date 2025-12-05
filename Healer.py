@@ -225,18 +225,18 @@ class Healer:
         self.tile_center_x = 0
         self.tile_center_y = 0
         if self.image[0] is None:
-            self.image[0] = load_image('luna01_01.png')
-            self.image[1] = load_image('luna01_02.png')
-            self.image[2] = load_image('luna01_03.png')
-            self.image[3] = load_image('luna01_04.png')
-            self.image[4] = load_image('luna01_05.png')
-            self.image[5] = load_image('luna01_06.png')
-            self.image[6] = load_image('luna01_07.png')
+            self.image[0] = load_image('char/luna01_01.png')
+            self.image[1] = load_image('char/luna01_02.png')
+            self.image[2] = load_image('char/luna01_03.png')
+            self.image[3] = load_image('char/luna01_04.png')
+            self.image[4] = load_image('char/luna01_05.png')
+            self.image[5] = load_image('char/luna01_06.png')
+            self.image[6] = load_image('char/luna01_07.png')
 
-            self.sk_image[0] = load_image('luna_skill1.png')
-            self.sk_image[1] = load_image('luna_skill2.png')
+            self.sk_image[0] = load_image('char/luna_skill1.png')
+            self.sk_image[1] = load_image('char/luna_skill2.png')
         if self.image_l is None:
-            self.image_l = load_image('luna_link.png')
+            self.image_l = load_image('char/luna_link.png')
         self.HEAL_INTERVAL = HEAL_INTERVAL
         self.heal_timer = 0.0
 
@@ -335,7 +335,7 @@ class HealEffect:
     def __init__(self, target=None, life=0.5, depth=7):
         self.target = target
         if self.image is None:
-            self.image = load_image('hl_at_ef.png')
+            self.image = load_image('char/hl_at_ef.png')
         # 초기 위치: 타겟이 있으면 따라붙음
         if self.target is not None:
             try:

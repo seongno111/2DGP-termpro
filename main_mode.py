@@ -15,7 +15,7 @@ def init():
     global image
     global running
     global logo_start_time
-    image = load_image('main_back.png')
+    image = load_image('ui/main_back.png')
     running = True
     logo_start_time = get_time()
 
