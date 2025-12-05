@@ -114,7 +114,7 @@ class Character:
     def __init__(self, allowed_numbers=None):
         self.p_y = 50
         self.font = load_font('ENCR10B.TTF', 32)
-        self.cost = 20
+        self.cost = 40
 
         # portraits 로드(한번만)
         if self.k_p_image is None:
@@ -397,13 +397,51 @@ class Character:
                 if not (hasattr(obj, 'x') and hasattr(obj, 'y') and hasattr(obj, 'skill')):
                     continue
                 try:
-                    if getattr(obj, 'skill', 0) == 10 and getattr(obj, 'depth', 0)  == 0:
-                        draw_rectangle(obj.x - 10, obj.y + 90, obj.x + 10, obj.y + 110, 255, 215, 0, 3, True)
-                    elif getattr(obj, 'skill', 0) == 10 and getattr(obj, 'depth', 0)  == 1:
-                        draw_rectangle(obj.x - 10, obj.y + 130, obj.x + 10, obj.y + 150, 255, 215, 0, 3, True)
-                    draw_rectangle(obj.x - 50, obj.y - 50, obj.x - 30, obj.y - 30, 255, 0, 0, 3, True)
+                    # depth 에 따라 스킬/퇴각 UI 위치 조정
+                    if getattr(obj, 'depth', 0) == 0:
+                        if getattr(obj, 'skill', 0) == 10:
+                            draw_rectangle(obj.x - 10, obj.y + 90, obj.x + 10, obj.y + 110, 255, 215, 0, 3, True)
+                        # depth 0 퇴각 버튼: 기존 y - 10 ~ y + 10 에서 40 아래로 → y - 50 ~ y - 30
+                        draw_rectangle(obj.x - 50, obj.y - 50, obj.x - 30, obj.y - 30, 255, 0, 0, 3, True)
+                    elif getattr(obj, 'depth', 0) == 1:
+                        if getattr(obj, 'skill', 0) == 10:
+                            draw_rectangle(obj.x - 10, obj.y + 130, obj.x + 10, obj.y + 150, 255, 215, 0, 3, True)
+                        # depth 1 유닛은 그대로 y - 10 ~ y + 10 유지
+                        draw_rectangle(obj.x - 50, obj.y - 10, obj.x - 30, obj.y + 10, 255, 0, 0, 3, True)
+                    else:
+                        # 다른 depth 는 퇴각 버튼을 그리지 않음
+                        pass
                 except Exception:
                     pass
+
+        # 링크 아이콘을 항상 최상위 UI 레이어에서 그리기 (linked == True 인 모든 유닛 대상)
+        try:
+            # Knight 클래스에 정의된 공용 링크 아이콘(있으면 사용)
+            try:
+                default_icon = getattr(Knight, 'image_l', None)
+            except Exception:
+                default_icon = None
+
+            for layer in getattr(game_world, 'world', []):
+                for obj in list(layer):
+                    if obj is None:
+                        continue
+                    # linked 플래그가 True 인 오브젝트만 대상
+                    if not getattr(obj, 'linked', False):
+                        continue
+                    # 개별 유닛에 image_l 가 있으면 우선 사용, 없으면 Knight 의 공용 아이콘 사용
+                    img_l = getattr(obj, 'image_l', default_icon)
+                    if img_l is None:
+                        continue
+                    try:
+                        if getattr(obj, 'depth', 0) == 0:
+                            img_l.clip_draw(0, 0, 84, 84, obj.x + 40, obj.y - 40, 20, 20)
+                        elif getattr(obj, 'depth', 0) == 1:
+                            img_l.clip_draw(0, 0, 84, 84, obj.x + 40, obj.y , 20, 20)
+                    except Exception:
+                        pass
+        except Exception:
+            pass
 
     def handle_event(self, event):
         def _get_mouse_pos(ev):
@@ -445,11 +483,20 @@ class Character:
                 if not (hasattr(obj, 'x') and hasattr(obj, 'y') and hasattr(obj, 'skill')):
                     continue
                 try:
-                    # draw()에서 그렸던 좌하단 빨간 사각형과 동일한 영역
-                    left = obj.x - 50
-                    bottom = obj.y - 50
-                    right = obj.x - 30
-                    top = obj.y - 30
+                    if getattr(obj, 'depth', 0) == 0:
+                        # depth 0: draw()에서 그린 y - 50 ~ y - 30 과 동일한 영역
+                        left = obj.x - 50
+                        bottom = obj.y - 50
+                        right = obj.x - 30
+                        top = obj.y - 30
+                    elif getattr(obj, 'depth', 0) == 1:
+                        # depth 1: draw()에서 그린 y - 10 ~ y + 10 과 동일한 영역
+                        left = obj.x - 50
+                        bottom = obj.y - 10
+                        right = obj.x - 30
+                        top = obj.y + 10
+                    else:
+                        continue
                 except Exception:
                     continue
 

@@ -183,6 +183,7 @@ class Attack:
 class Archer:
     image = []
     image_sk = []
+    image_l = None
     for i in range(8):
         image.append(None)
     for i in range(6):
@@ -221,6 +222,8 @@ class Archer:
             self.image_sk[2] = load_image('isli_skill03.png')
             self.image_sk[3] = load_image('isli_skill04.png')
             self.image_sk[4] = load_image('isli_skill05.png')
+        if self.image_l is None:
+            self.image_l = load_image('isli_link.png')
         self.IDLE = Idle(self)
         self.ATK = Attack(self)
 

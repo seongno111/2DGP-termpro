@@ -161,6 +161,7 @@ class Knight:
     image = []
     image_at = []
     image_sk = []
+    image_l = None
     for i in range(8):
         image.append(None)
     for i in range(3):
@@ -208,7 +209,8 @@ class Knight:
             self.image_sk[3] = load_image('tuar_skill04.png')
             self.image_sk[4] = load_image('tuar_skill05.png')
             self.image_sk[5] = load_image('tuar_skill06.png')
-
+        if self.image_l is None:
+            self.image_l = load_image('tuar_link.png')
         self.IDLE = Idle(self)
         self.ATK = Attack(self)
 
@@ -275,7 +277,6 @@ class Knight:
         self.state_machine.draw()
         for i in range(int((self.Hp/1000)*100//10)):
             self.font.draw(self.x-50+i*10, self.y+80, f'/', (100, 250, 100))
-
     def get_bb(self):
         return self.x - 40, self.y - 40, self.x + 40, self.y + 40
 
