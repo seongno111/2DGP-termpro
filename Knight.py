@@ -3,6 +3,7 @@ from sdl2 import SDL_BUTTON_LEFT, SDL_MOUSEBUTTONDOWN
 import game_framework
 import game_world
 from state_machine import StateMachine
+from link_helper import update_link_states_for_knight_archer
 
 
 TIME_PER_ACTION = 0.8
@@ -61,11 +62,15 @@ class Attack:
     def do(self):
         # 애니 프레임 업데이트
         self.knight.frame = (self.knight.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 5
+        if self.knight.linked:
+            self.knight.frame = (self.knight.frame + (FRAMES_PER_ACTION_ac*2) * ACTION_PER_TIME * game_framework.frame_time) % 5
         if self.knight.skill_state is True:
             self.knight.skill_frame = (self.knight.skill_frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time) % 6
 
         # 공격 간격
         ATTACK_INTERVAL = 0.8
+        if self.knight.linked is True:
+            ATTACK_INTERVAL = 0.4
         self.attack_timer += game_framework.frame_time
         if self.attack_timer < ATTACK_INTERVAL:
             return
@@ -164,6 +169,7 @@ class Knight:
         image_sk.append(None)
     def __init__(self):
         self.depth = 0
+        self.linked = False
         self.x, self.y = 0, 0
         self.frame = 0
         self.skill_frame = 0
@@ -279,6 +285,12 @@ class Knight:
             dt = game_framework.frame_time
         except Exception:
             dt = 0.0
+
+        # Knight-Archer 링크 상태 자동 갱신
+        try:
+            update_link_states_for_knight_archer()
+        except Exception:
+            pass
 
         if self.skill_state is True:
             self._skill_timer += dt

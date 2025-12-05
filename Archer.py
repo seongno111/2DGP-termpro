@@ -3,6 +3,7 @@ from pico2d import load_image, draw_rectangle, load_font
 import game_framework
 import game_world
 from state_machine import StateMachine
+from link_helper import update_link_states_for_knight_archer
 import math
 
 TIME_PER_ACTION = 0.8
@@ -190,6 +191,7 @@ class Archer:
         self.depth = 1
         self.x, self.y = 0, 0
         self.frame = 0
+        self.linked = False
         self.skill_frame = 0
         self.face_dir = 0
         self.max_hp = 700
@@ -266,6 +268,18 @@ class Archer:
             dt = game_framework.frame_time
         except Exception:
             dt = 0.0
+
+        # Knight-Archer 링크 상태 자동 갱신
+        try:
+            update_link_states_for_knight_archer()
+        except Exception:
+            pass
+
+        # 링크 상태에 따른 공격력 보정
+        if self.linked is True:
+            self.Atk = 150
+        else:
+            self.Atk = 120
 
         if self.skill_state is True:
             self._skill_timer += dt

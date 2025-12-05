@@ -15,6 +15,8 @@ from Dptank import Dptank
 from Healer import Healer
 from Vanguard import Vanguard
 
+
+
 def left_m_down(e):
     return isinstance(e, tuple) and len(e) >= 2 and e[0] == 'INPUT' and getattr(e[1], 'type', None) == SDL_MOUSEBUTTONDOWN and getattr(e[1], 'button', None) == SDL_BUTTON_LEFT
 
