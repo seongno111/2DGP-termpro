@@ -95,7 +95,21 @@ class Atack_state:
             self.monster.d_frame = (self.monster.d_frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time)%2
         target = getattr(self.monster, 'target', None)
 
-        # 대상이 없거나 충돌이 끊기면 SEPARATE 발생
+        # [추가] 타겟 유닛이 퇴각/삭제/사망한 경우 방어적 체크
+        if target is None:
+            self.monster.state_machine.handle_state_event(('SEPARATE', None))
+            return
+        try:
+            dead = getattr(target, 'Hp', 0) <= 0
+            in_world = any(target in layer for layer in game_world.world)
+        except Exception:
+            dead = True
+            in_world = False
+        if dead or (not in_world):
+            self.monster.state_machine.handle_state_event(('SEPARATE', None))
+            return
+
+        # 기존 로직: 대상이 없거나 충돌이 끊기면 SEPARATE 발생
         if target is None or not game_world.collide(self.monster, target):
             self.monster.state_machine.handle_state_event(('SEPARATE', None))
             return
