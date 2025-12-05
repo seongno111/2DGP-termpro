@@ -33,3 +33,37 @@ def update_link_states_for_knight_archer():
         k.linked = True
     for a in archers:
         a.linked = True
+
+
+def update_link_states_for_dptank_vanguard():
+    """Dptank와 Vanguard가 동시에 필드에 존재하면 거리와 상관없이 서로 linked 를 True 로 맞춘다.
+
+    Knight-Archer 링크 방식과 동일하게, 클래스 이름 문자열로 타입을 구분해
+    import 순환 문제를 피한다.
+    """
+    try:
+        dps = []
+        vgs = []
+        for layer in game_world.world:
+            for obj in layer:
+                name = obj.__class__.__name__
+                if name == 'Dptank':
+                    dps.append(obj)
+                elif name == 'Vanguard':
+                    vgs.append(obj)
+    except Exception:
+        return
+
+    # 둘 중 하나라도 없으면 둘 다 False
+    if not dps or not vgs:
+        for u in dps:
+            u.linked = False
+        for u in vgs:
+            u.linked = False
+        return
+
+    # 둘 다 하나 이상 존재하면 전부 링크 ON
+    for u in dps:
+        u.linked = True
+    for u in vgs:
+        u.linked = True

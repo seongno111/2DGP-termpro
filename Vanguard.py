@@ -3,7 +3,8 @@ from pico2d import load_image, load_font
 import game_framework
 import game_world
 from state_machine import StateMachine
-
+from link_helper import update_link_states_for_dptank_vanguard
+from unit_collision_helper import handle_unit_vs_monster_collision
 
 
 TIME_PER_ACTION = 0.8
@@ -38,15 +39,14 @@ class Attack:
         self.vanguard.frame = 0
         self.attack_timer = 0.0
         if isinstance(e, tuple) and len(e) >= 3:
-            # event 형태: ('COLLIDE', group, other)
+            # event 형식: ('COLLIDE', group, other)
             self.vanguard.target = e[2]
-        # else target might already be set in handle_collision
     def exit(self, e):
         self.vanguard.frame = 0
         self.attack_timer = 0.0
-        # 정리: 타겟이 이 Vanguard에 의해 저지된 상태면 카운트 감소 및 링크 해제
+        tgt = getattr(self.vanguard, 'target', None)
+        # 내가 직접 저지하던 타깃이면 now_stop 감소 및 block 해제
         try:
-            tgt = getattr(self.vanguard, 'target', None)
             if tgt is not None and getattr(tgt, '_blocked_by', None) is self.vanguard:
                 try:
                     self.vanguard.now_stop = max(0, self.vanguard.now_stop - 1)
@@ -56,11 +56,6 @@ class Attack:
                     tgt._blocked_by = None
                 except Exception:
                     pass
-                try:
-                    if getattr(tgt, 'target', None) is self.vanguard:
-                        tgt.target = None
-                except Exception:
-                    pass
         except Exception:
             pass
         try:
@@ -68,95 +63,199 @@ class Attack:
         except Exception:
             pass
 
+    def _collect_objects(self):
+        try:
+            if hasattr(game_world, 'world'):
+                return [o for layer in game_world.world for o in layer]
+        except Exception:
+            pass
+        objs = None
+        if hasattr(game_world, 'get_objects') and callable(getattr(game_world, 'get_objects')):
+            try:
+                objs = game_world.get_objects()
+            except Exception:
+                objs = None
+        if objs is None and hasattr(game_world, 'objects'):
+            objs = getattr(game_world, 'objects')
+        if objs is None and hasattr(game_world, 'all_objects'):
+            objs = getattr(game_world, 'all_objects')
+        return objs
+
+    def _bb_overlap(self, a_bb, b_bb):
+        la, ba, ra, ta = a_bb
+        lb, bb, rb, tb = b_bb
+        return not (ra < lb or la > rb or ta < bb or ba > tb)
+
+    def _find_blocked_target(self):
+        objs = self._collect_objects()
+        if not objs:
+            return None
+        for o in list(objs):
+            if o is None or o is self.vanguard:
+                continue
+            if getattr(o, '_blocked_by', None) is self.vanguard and getattr(o, 'Hp', 1) > 0:
+                try:
+                    if game_world.in_attack_range(self.vanguard, o):
+                        return o
+                except Exception:
+                    continue
+        return None
+
+    def _find_colliding_target(self):
+        objs = self._collect_objects()
+        if not objs:
+            return None
+        my_bb = None
+        if hasattr(self.vanguard, 'get_bb'):
+            try:
+                my_bb = self.vanguard.get_bb()
+            except Exception:
+                my_bb = None
+        for o in list(objs):
+            if o is None or o is self.vanguard:
+                continue
+            if getattr(o, 'Hp', 0) <= 0:
+                continue
+            if not hasattr(o, 'get_bb'):
+                continue
+            try:
+                if my_bb is None:
+                    my_bb = self.vanguard.get_bb()
+                if self._bb_overlap(my_bb, o.get_bb()) and game_world.in_attack_range(self.vanguard, o):
+                    return o
+            except Exception:
+                continue
+        return None
+
     def do(self):
         # 애니 프레임 업데이트
-        self.vanguard.frame = (
-                                          self.vanguard.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 5
+        self.vanguard.frame = (self.vanguard.frame + FRAMES_PER_ACTION_ac * ACTION_PER_TIME * game_framework.frame_time) % 5
         target = getattr(self.vanguard, 'target', None)
 
-        # 대상 유효성 및 범위 체크: 죽었거나 범위 밖이면 공격 종료
+        # 현재 타깃이 죽었거나 world에서 사라졌거나, 범위 밖이면 정리하고 새 타깃 탐색
         try:
-            if target is None or getattr(target, 'Hp', 0) <= 0 or not game_world.in_attack_range(self.vanguard, target):
-                # 혹시 죽었는데 world/collision에 남아있다면 한 번 더 정리
-                if target is not None and getattr(target, 'Hp', 0) <= 0:
+            if target is not None:
+                died = getattr(target, 'Hp', 0) <= 0
+                try:
+                    in_world = any(target in layer for layer in game_world.world)
+                except Exception:
+                    in_world = False
+                if died or not in_world or not game_world.in_attack_range(self.vanguard, target):
                     try:
-                        game_world.remove_object(target)
+                        if getattr(target, '_blocked_by', None) is self.vanguard:
+                            target._blocked_by = None
+                            self.vanguard.now_stop = max(0, self.vanguard.now_stop - 1)
                     except Exception:
                         pass
-                    try:
-                        game_world.remove_collision_object(target)
-                    except Exception:
-                        pass
+                    target = None
+                    self.vanguard.target = None
+        except Exception:
+            pass
+
+        # 유효 타깃이 없으면 새로 찾기 (먼저 내가 막고 있던 타깃, 없으면 단순 충돌 타깃)
+        if target is None:
+            new_target = self._find_blocked_target()
+            if new_target is None:
+                new_target = self._find_colliding_target()
+            if new_target is not None:
+                self.vanguard.target = new_target
+                target = new_target
+            else:
+                # 더 이상 때릴 수 있는 몬스터가 없으면 Attack 상태 종료
                 self.vanguard.state_machine.handle_state_event(('SEPARATE', None))
                 return
-        except Exception:
-            self.vanguard.state_machine.handle_state_event(('SEPARATE', None))
-            return
 
         # 공격 간격
         ATTACK_INTERVAL = 0.8
         if self.vanguard.skill > 0:
             ATTACK_INTERVAL = 0.4
         self.attack_timer += game_framework.frame_time
-        if self.attack_timer >= ATTACK_INTERVAL:
-            self.attack_timer -= ATTACK_INTERVAL
-            dmg = max(0, self.vanguard.Atk - getattr(target, 'Def', 0))
+        if self.attack_timer < ATTACK_INTERVAL:
+            return
+        self.attack_timer -= ATTACK_INTERVAL
+
+        # 실제 공격 수행
+        dmg = max(0, self.vanguard.Atk - getattr(target, 'Def', 0))
+        try:
+            target.Hp -= dmg
+        except Exception:
+            pass
+        print(f'Vanguard attacked Monster dmg={dmg} target_hp={getattr(target, "Hp", "?")}')
+
+        # skill이 있는 상태라면 코스트 1 증가 (기존 기능 유지)
+        if self.vanguard.skill > 0:
             try:
-                target.Hp -= dmg
+                import sys
+                char = None
+                for mod_name in ('stage02', 'stage01'):
+                    mod = sys.modules.get(mod_name)
+                    if mod:
+                        c = getattr(mod, 'character', None)
+                        if c is not None:
+                            char = c
+                            break
+                if char is None:
+                    import game_world as _gw
+                    for layer in getattr(_gw, 'world', []):
+                        for obj in list(layer):
+                            if getattr(obj, '__class__', None) and obj.__class__.__name__ == 'Character':
+                                char = obj
+                                break
+                        if char:
+                            break
+                if char is not None:
+                    try:
+                        char.cost += 1
+                    except Exception:
+                        pass
             except Exception:
                 pass
-            print(f'Knight attacked Monster dmg={dmg} target_hp={getattr(target, "Hp", "?")}')
 
-            # skill이 있는 상태라면 플레이어 cost를 1 증가시킴
-            if self.vanguard.skill > 0:
-                try:
-                    import sys
-                    char = None
-                    for mod_name in ('stage02', 'stage01'):
-                        mod = sys.modules.get(mod_name)
-                        if mod:
-                            c = getattr(mod, 'character', None)
-                            if c is not None:
-                                char = c
-                                break
-                    if char is None:
-                        import game_world as _gw
-                        for layer in getattr(_gw, 'world', []):
-                            for obj in list(layer):
-                                if getattr(obj, '__class__', None) and obj.__class__.__name__ == 'Character':
-                                    char = obj
-                                    break
-                            if char:
-                                break
-                    if char is not None:
-                        try:
-                            char.cost += 1
-                        except Exception:
-                            pass
-                except Exception:
-                    pass
-
-            if getattr(target, 'Hp', 1) <= 0:
-                print(f'{target.__class__.__name__} died by Vanguard.')
-                # 몬스터 제거 및 충돌 제거
-                try:
-                    game_world.remove_object(target)
+        # 타깃이 죽었으면 정리 후 새 타깃 찾기
+        if getattr(target, 'Hp', 1) <= 0:
+            print(f'{target.__class__.__name__} died by Vanguard.')
+            try:
+                if hasattr(target, 'die'):
                     target.die()
-                except Exception:
-                    pass
+            except Exception:
+                pass
+            try:
+                game_world.remove_object(target)
+            except Exception:
+                pass
+            try:
+                game_world.remove_collision_object(target)
+            except Exception:
+                pass
+            try:
+                if getattr(target, '_blocked_by', None) is self.vanguard:
+                    target._blocked_by = None
+                    self.vanguard.now_stop = max(0, self.vanguard.now_stop - 1)
+            except Exception:
+                pass
+
+            next_target = self._find_blocked_target()
+            if next_target is None:
+                next_target = self._find_colliding_target()
+            if next_target:
                 try:
-                    game_world.remove_collision_object(target)
+                    if getattr(next_target, '_blocked_by', None) is None:
+                        next_target._blocked_by = self.vanguard
+                        self.vanguard.now_stop = min(self.vanguard.stop, self.vanguard.now_stop + 1)
                 except Exception:
                     pass
-                # 타깃 비우고 상태 복귀
+                self.vanguard.target = next_target
+                self.attack_timer = 0.0
+            else:
                 self.vanguard.target = None
                 self.vanguard.state_machine.handle_state_event(('SEPARATE', None))
+                return
+
     def draw(self):
         x = self.vanguard.x
         y = self.vanguard.y + 50
         if getattr(self.vanguard, 'face_dir', 0) == 0 or getattr(self.vanguard, 'face_dir', 0) == 2:
             self.vanguard.image[int(self.vanguard.frame) + 1].clip_draw(0, 0, 100, 100, x, y, 150, 160)
-            # optional attack effect draw if image_at exists
             if hasattr(self.vanguard, 'image_at') and self.vanguard.frame >= 3 and len(self.vanguard.image_at) > 0:
                 idx = min(len(self.vanguard.image_at) - 1, int(self.vanguard.frame) - 3)
                 self.vanguard.image_at[idx].clip_draw(0, 0, 124, 117, x + 50, y - 20, 100, 160)
@@ -170,6 +269,7 @@ class Vanguard:
     image = []
     image_at = []
     image_s = None
+    image_l = None
     for i in range(8):
         image.append(None)
     for i in range(3):
@@ -189,6 +289,7 @@ class Vanguard:
         self.skill = 15
         self._skill_timer = 0.0
         self.number = 6
+        self.linked = False
         self.tile_w = 100
         self.tile_h = 100
         self.tile_center_x = 0
@@ -196,7 +297,6 @@ class Vanguard:
         self.font = load_font('ENCR10B.TTF', 30)
 
         if self.image[0] is None:
-            # 기존 스프라이트 이름에 맞게 수정하세요 (파일 없으면 에러 방지 위해 try/except 할 것)
             try:
                 self.image[0] = load_image('asha01_01.png')
                 self.image[1] = load_image('asha01_02.png')
@@ -207,14 +307,14 @@ class Vanguard:
                 self.image[6] = load_image('asha01_07.png')
             except Exception:
                 pass
-
+        if self.image_l is None:
+            self.image_l = load_image('asha_link.png')
         if self.image_at[0] is None:
             try:
                 self.image_at[0] = load_image('va_at_ef_01.png')
                 self.image_at[1] = load_image('va_at_ef_02.png')
                 self.image_at[2] = load_image('va_at_ef_03.png')
             except Exception:
-                # 파일이 없으면 비어둠
                 self.image_at = []
         if self.image_s is None:
             self.image_s = load_image('asha_skill.png')
@@ -265,11 +365,22 @@ class Vanguard:
 
     def update(self):
         self.state_machine.update()
-        # frame_time 누적으로 1초마다 skill 감소
         try:
             dt = game_framework.frame_time
         except Exception:
             dt = 0.0
+
+        # Dptank-Vanguard 링크 상태 자동 갱신
+        try:
+            update_link_states_for_dptank_vanguard()
+        except Exception:
+            pass
+
+        # 링크 상태에 따라 방어력 조정
+        if getattr(self, 'linked', False):
+            self.Def = 50
+        else:
+            self.Def = 10
 
         if dt > 0.0:
             self._skill_timer += dt
@@ -279,65 +390,29 @@ class Vanguard:
                     self.skill = max(0.0, self.skill - dec)
                     self._skill_timer -= dec
 
-
     def get_bb(self):
         return self.x - 40, self.y - 40, self.x + 40, self.y + 40
 
     def handle_collision(self, group, other):
-        left, right = (group.split(':') + ['', ''])[:2]
-        left = left.strip().upper()
-        right = right.strip().upper()
-
-        # 이미 다른 유닛에 의해 저지되었으면 패스
-        if getattr(other, '_blocked_by', None) is not None:
-            return
-
-        # VANGUARD와 MONSTER 간 충돌인 경우에만 특별 처리 (양방향 허용)
-        if (left == 'VANGUARD' and right == 'MONSTER') or (left == 'MONSTER' and right == 'VANGUARD'):
-            if self.now_stop < self.stop:
-                other._blocked_by = self
-                self.now_stop += 1
-                if getattr(self, 'target', None) is None:
-                    self.target = other
-                try:
-                    self.state_machine.handle_state_event(('COLLIDE', group, other))
-                except Exception:
-                    pass
-            return
-
-        # 기본 폴백
-        if self.now_stop < self.stop:
-            other._blocked_by = self
-            self.now_stop += 1
-            if getattr(self, 'target', None) is None:
-                self.target = other
-            try:
-                self.state_machine.handle_state_event(('COLLIDE', group, other))
-            except Exception:
-                pass
+        # depth 0 유닛 공통 보조 함수로 저지/상태 전환 처리
+        blocked = handle_unit_vs_monster_collision(self, group, other)
         return
 
     def on_hit_by_monster(self, attacker):
         """몬스터에게 피격되었을 때 호출된다."""
-        # 이미 공격 중이면 굳이 Idle -> Attack 전환 시도 안 함
         if self.state_machine.cur_state is self.ATK:
             return
-
-        # 공격 가능한 범위 안인지 확인
         try:
             if not game_world.in_attack_range(self, attacker):
                 return
         except Exception:
             return
-
-        # 현재 타겟이 없을 때만 이 몬스터를 타겟으로 삼고 공격 상태 진입
         if getattr(self, 'target', None) is None:
             try:
                 self.target = attacker
             except Exception:
                 pass
             try:
-                # Idle 상태에서 몬스터에게 공격받으면 ATK 상태로 넘기기 위한 이벤트
-                self.state_machine.handle_state_event(('COLLIDE', 'DPTANK:MONSTER', attacker))
+                self.state_machine.handle_state_event(('COLLIDE', 'VANGUARD:MONSTER', attacker))
             except Exception:
                 pass

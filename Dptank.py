@@ -4,6 +4,7 @@ import game_framework
 import game_world
 from state_machine import StateMachine
 from unit_collision_helper import handle_unit_vs_monster_collision
+from link_helper import update_link_states_for_dptank_vanguard
 
 TIME_PER_ACTION = 0.8
 ACTION_PER_TIME = 1.0 / TIME_PER_ACTION
@@ -246,6 +247,7 @@ class Attack:
 
 class Dptank:
     image = []
+    image_l = None
     for i in range(7):
         image.append(None)
     at_image = []
@@ -272,6 +274,7 @@ class Dptank:
         self.skill = 0
         self._skill_timer = 0.0
         self.skill_state = False
+        self.linked = False
         self.tile_w = 100
         self.tile_h = 100
         self.tile_center_x = 0
@@ -294,6 +297,8 @@ class Dptank:
             self.sk_image[2] = load_image('ext_skill3.png')
             self.sk_image[3] = load_image('ext_skill4.png')
             self.sk_image[4] = load_image('ext_skill5.png')
+        if self.image_l is None:
+            self.image_l = load_image('ext_link.png')
         self.IDLE = Idle(self)
         self.ATK = Attack(self)
 
@@ -361,12 +366,46 @@ class Dptank:
         except Exception:
             dt = 0.0
 
+        # Dptank-Vanguard 링크 상태 자동 갱신
+        try:
+            update_link_states_for_dptank_vanguard()
+        except Exception:
+            pass
+
         if self.skill_state is True:
             self._skill_timer += dt
             self.Def = 100
             while self._skill_timer >= 1.0 and self.skill > 0:
                 self.skill = max(0, self.skill - 1)
                 self._skill_timer -= 1.0
+                # linked 상태일 때 스킬을 1 소모할 때마다 cost 10 회복
+                if getattr(self, 'linked', False):
+                    try:
+                        import sys
+                        char = None
+                        for mod_name in ('stage03', 'stage02', 'stage01'):
+                            mod = sys.modules.get(mod_name)
+                            if mod:
+                                c = getattr(mod, 'character', None)
+                                if c is not None:
+                                    char = c
+                                    break
+                        if char is None:
+                            import game_world as _gw
+                            for layer in getattr(_gw, 'world', []):
+                                for obj in list(layer):
+                                    if getattr(obj, '__class__', None) and obj.__class__.__name__ == 'Character':
+                                        char = obj
+                                        break
+                                if char:
+                                    break
+                        if char is not None:
+                            try:
+                                char.cost += 1
+                            except Exception:
+                                pass
+                    except Exception:
+                        pass
                 if self.skill == 0:
                     self.skill_state = False
 

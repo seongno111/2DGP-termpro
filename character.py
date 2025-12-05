@@ -434,10 +434,16 @@ class Character:
                     if img_l is None:
                         continue
                     try:
+                        # Vanguard 의 asha_link.png 는 원본 크기 56x56 이므로 그 크기로 clip
+                        if obj.__class__.__name__ == 'Vanguard':
+                            src_w, src_h = 56, 56
+                        else:
+                            src_w, src_h = 84, 84
+
                         if getattr(obj, 'depth', 0) == 0:
-                            img_l.clip_draw(0, 0, 84, 84, obj.x + 40, obj.y - 40, 20, 20)
+                            img_l.clip_draw(0, 0, src_w, src_h, obj.x + 40, obj.y - 40, 20, 20)
                         elif getattr(obj, 'depth', 0) == 1:
-                            img_l.clip_draw(0, 0, 84, 84, obj.x + 40, obj.y , 20, 20)
+                            img_l.clip_draw(0, 0, src_w, src_h, obj.x + 40, obj.y, 20, 20)
                     except Exception:
                         pass
         except Exception:
