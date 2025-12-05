@@ -114,7 +114,7 @@ class Character:
     def __init__(self, allowed_numbers=None):
         self.p_y = 50
         self.font = load_font('ENCR10B.TTF', 32)
-        self.cost = 40
+        self.cost = 20
 
         # portraits 로드(한번만)
         if self.k_p_image is None:
