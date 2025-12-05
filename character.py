@@ -381,7 +381,9 @@ class Character:
             img = info['image']
             x = info['x']
             img.clip_draw(0, 0, 1022, 1022, x, self.p_y, 100, 100)
+        # 코스트만 표시 (몬스터 HUD는 각 스테이지 draw()에서 그림)
         self.font.draw(0,110, f'{int(self.cost):02d}', (255, 255, 0))
+
         for key, info in self.unit_map.items():
             if self.unit_placed.get(key, False):
                 x = info['x']

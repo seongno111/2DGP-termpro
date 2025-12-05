@@ -82,8 +82,10 @@ def handle_events():
     for event in events:
         if event.type == SDL_QUIT:
             running = False
+            game_framework.quit()
         elif event.type == SDL_KEYDOWN and event.key == SDLK_ESCAPE:
             running = False
+            game_framework.quit()
         elif event.type == SDL_MOUSEBUTTONDOWN and event.button == SDL_BUTTON_LEFT:
             # 선택한 스테이지로 start_party 전달 후 해당 스테이지로 전환
             mx, my = _get_mouse_pos_from_event(event)

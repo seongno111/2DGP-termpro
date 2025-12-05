@@ -52,8 +52,10 @@ def handle_events():
     for event in event_list:
         if event.type == SDL_QUIT:
             running = False
+            game_framework.quit()
         elif event.type == SDL_KEYDOWN and event.key == SDLK_ESCAPE:
             running = False
+            game_framework.quit()
         else:
             if character:
                 character.handle_event(event)
@@ -216,6 +218,16 @@ def draw():
     clear_canvas()
 
     game_world.render()
+
+    # 화면 상단 중앙에 몬스터 토벌 수/목표 토벌 수 표시
+    try:
+        cx = get_canvas_width() // 2
+        cy = get_canvas_height() - 40
+        # stage01 목표 토벌 수는 10마리
+        if font is not None:
+            font.draw(cx - 80, cy, f'Monster: {killed_monster}/10', (255, 255, 255))
+    except Exception:
+        pass
 
     # 결과 이미지 오버레이(중앙 표시), 크기 87x81
     if _result_shown and _result_type is not None:
