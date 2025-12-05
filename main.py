@@ -1,8 +1,8 @@
 from pico2d import *
 import game_framework
 #import stage01 as start_mode
-#import logo_mode as start_mode
-import main_mode as start_mode
+import logo_mode as start_mode
+#import main_mode as start_mode
 
 
 open_canvas(1000,800)

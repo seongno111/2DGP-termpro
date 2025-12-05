@@ -458,7 +458,7 @@ class Monster:
             self.font.draw(self.x - 50 + i * 10, self.y + 120, f'/', (250, 0, 0))
 
     def get_bb(self):
-        return self.x - 50, self.y - 50, self.x + 50, self.y + 50
+        return self.x - 40, self.y - 40, self.x + 40, self.y + 40
     def handle_event(self, event):
         self.state_machine.handle_state_event(('INPUT', event))
 

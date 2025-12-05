@@ -1,6 +1,6 @@
 import game_framework
 from pico2d import *
-import stage01
+import main_mode
 
 image = None
 running = True
@@ -22,7 +22,7 @@ def update():
     global logo_start_time
     if get_time() - logo_start_time >= 2.0:
         logo_start_time = get_time()
-        game_framework.change_mode(play_mode)
+        game_framework.change_mode(main_mode)
 
 def draw():
     clear_canvas()
