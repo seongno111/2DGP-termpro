@@ -181,14 +181,12 @@ class Knight:
         self.Hp = 1000
         self.Def = 20
         self.Atk = 100
+        # 스킬 게이지/상태: 게이지는 쿨다운 전용, 실제 지속 시간은 별도 duration으로 관리
         self.skill = 0
         self._skill_timer = 0.0
         self.skill_state = False
-        self.number = 1
-        self.tile_w = 100
-        self.tile_h = 100
-        self.tile_center_x = 0
-        self.tile_center_y = 0
+        self.skill_state_time = 0.0
+        self.skill_state_duration = 10.0
         self.font = load_font('ENCR10B.TTF', 30)
         if self.image[0] is None:
             self.image[0] = load_image('char/tuar03_01.png')
@@ -293,18 +291,22 @@ class Knight:
         except Exception:
             pass
 
-        if self.skill_state is True:
-            self._skill_timer += dt
+        # 1) 스킬 유지 시간 처리 (skill_state == True 일 때만)
+        if self.skill_state:
             self.Atk = 200
-            while self._skill_timer >= 1.0 and self.skill > 0:
-                self.skill = max(0, self.skill - 1)
-                self._skill_timer -= 1.0
-                if self.skill == 0:
-                    self.skill_state = False
-
+            self.skill_state_time += dt
+            if self.skill_state_time >= self.skill_state_duration:
+                # 10초 유지 후 스킬 종료
+                self.skill_state = False
+                self.skill_state_time = 0.0
+                # 게이지는 0에서 다시 채우기 시작한다고 가정
+                self.skill = 0
         else:
-            self._skill_timer += dt
             self.Atk = 100
+
+        # 2) 스킬이 꺼져 있는 동안만 쿨다운 게이지 채우기 (10초 동안 0→10)
+        if not self.skill_state:
+            self._skill_timer += dt
             while self._skill_timer >= 1.0 and self.skill < 10:
                 self.skill = min(10, self.skill + 1)
                 self._skill_timer -= 1.0

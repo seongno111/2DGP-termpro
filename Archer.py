@@ -200,9 +200,12 @@ class Archer:
         self.Def = 10
         self.Atk = 120
         self.number = 2
+        # 스킬 게이지/상태: 게이지 0~10, 상태 및 지속시간 별도 관리
         self.skill = 0
         self._skill_timer = 0.0
         self.skill_state = False
+        self.skill_state_time = 0.0
+        self.skill_state_duration = 10.0
         self.tile_w = 100
         self.tile_h = 100
         self.tile_center_x = 0
@@ -278,21 +281,18 @@ class Archer:
         except Exception:
             pass
 
-        # 링크 상태에 따른 공격력 보정
-        if self.linked is True:
-            self.Atk = 150
-        else:
-            self.Atk = 120
+        # 링크 상태에 따른 공격력 기본값 조정
+        self.Atk = 150 if self.linked else 120
 
-        if self.skill_state is True:
-            self._skill_timer += dt
-            while self._skill_timer >= 1.0 and self.skill > 0:
-                self.skill = max(0, self.skill - 1)
-                self._skill_timer -= 1.0
-                if self.skill == 0:
-                    self.skill_state = False
-
+        # 1) 스킬 발동 중이면 10초 유지 (화력/공속 증가는 Attack.do 에서 skill_state를 보고 처리)
+        if self.skill_state:
+            self.skill_state_time += dt
+            if self.skill_state_time >= self.skill_state_duration:
+                self.skill_state = False
+                self.skill_state_time = 0.0
+                self.skill = 0
         else:
+            # 2) 스킬이 꺼져 있을 때만 게이지 충전 (10초 동안 0→10)
             self._skill_timer += dt
             while self._skill_timer >= 1.0 and self.skill < 10:
                 self.skill = min(10, self.skill + 1)

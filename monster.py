@@ -490,14 +490,13 @@ class Monster:
             blocked_by = getattr(self, '_blocked_by', None)
             if blocked_by is not None:
                 try:
-                    # 0\) 죽었거나 월드에서 빠졌으면 무효
                     is_dead = getattr(blocked_by, 'Hp', 1) <= 0
                     in_world = any(blocked_by in layer for layer in game_world.world)
                 except Exception:
                     is_dead = True
                     in_world = False
 
-                # 1\) 여전히 나와 실제 충돌 중인지 확인
+                # 여전히 충돌 중인지 검사
                 still_collide = False
                 if not is_dead and in_world and hasattr(blocked_by, 'get_bb'):
                     try:
@@ -505,7 +504,6 @@ class Monster:
                     except Exception:
                         still_collide = False
 
-                # 더 이상 나를 막고 있지 않으면 `_blocked_by` 해제
                 if is_dead or (not in_world) or (not still_collide):
                     try:
                         self._blocked_by = None
@@ -519,20 +517,24 @@ class Monster:
             if blocked_by is not None and blocked_by is not other:
                 return
 
-            # [2] other 유닛이 더 이상 추가 저지를 못 하는 상태면,
-            #     이 몬스터는 그 유닛을 타겟으로도 잡지 않음 (통과)
+            # [2] other 유닛이 더 이상 추가 저지를 못 하는 상태인지 확인
             now_stop = getattr(other, 'now_stop', 0)
             stop = getattr(other, 'stop', 0)
             if stop > 0 and now_stop >= stop:
-                # 여기서 self._blocked_by 는 건드리지 않음 -> "그냥 지나가는" 유닛
+                # 만약 지금 나를 막고 있던 유닛이 stop를 다 쓴 상태라면, 더 이상 blocker가 아니므로 해제
+                if blocked_by is other:
+                    try:
+                        self._blocked_by = None
+                    except Exception:
+                        pass
+                # 이 유닛은 단순 통과
                 return
 
             # [3] 여기까지 왔으면, 이 유닛이 실제로 나를 막을 수 있는 후보
             try:
                 # 이미 같은 타겟이면 재진입 방지
                 if getattr(self, 'target', None) is other:
-                    return
-
+                    pass
                 # 몬스터 입장에서 지금 막힌 유닛으로 타겟 설정
                 self.target = other
 

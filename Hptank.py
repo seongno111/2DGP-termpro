@@ -219,9 +219,12 @@ class Hptank:
         self.Def = 30
         self.Atk = 60
         self.number = 3
+        # 스킬: 게이지 0~10, 상태/지속시간 별도 관리
         self.skill = 0
         self._skill_timer = 0.0
         self.skill_state = False
+        self.skill_state_time = 0.0
+        self.skill_state_duration = 10.0
         self.linked = False
         self.tile_w = 100
         self.tile_h = 100
@@ -380,24 +383,21 @@ class Hptank:
         else:
             self.stop = 4
 
-        if self.skill_state is True:
+        # 1) 스킬 유지 시간 처리 (skill_state == True 인 동안 10초 유지, 1초마다 힐)
+        if self.skill_state:
+            self.skill_state_time += dt
             self._skill_timer += dt
-            while self._skill_timer >= 1.0 and self.skill > 0:
-                # 스킬 게이지 감소
-                self.skill = max(0, self.skill - 1)
-
-                # Hp 회복: 최대 Hp 를 넘지 않도록 clamp
+            while self._skill_timer >= 1.0:
                 if self.Hp < self.max_hp:
                     self.Hp = min(self.max_hp, self.Hp + 100)
-
                 self._skill_timer -= 1.0
-
-                # 스킬 소진 시 종료
-                if self.skill == 0:
-                    self.skill_state = False
-                    break
-
+            if self.skill_state_time >= self.skill_state_duration:
+                # 10초 유지 후 스킬 종료 및 게이지 0으로 초기화
+                self.skill_state = False
+                self.skill_state_time = 0.0
+                self.skill = 0
         else:
+            # 2) 스킬이 꺼져 있는 동안만 쿨다운 게이지 채우기 (10초 동안 0→10)
             self._skill_timer += dt
             while self._skill_timer >= 1.0 and self.skill < 10:
                 self.skill = min(10, self.skill + 1)

@@ -218,9 +218,12 @@ class Healer:
         self.number = 5
         self.tile_w = 100
         self.tile_h = 100
+        # 스킬: 게이지 0~10, 상태 및 지속시간 별도 관리
         self.skill = 0
         self._skill_timer = 0.0
         self.skill_state = False
+        self.skill_state_time = 0.0
+        self.skill_state_duration = 10.0
         self.linked = False
         self.tile_center_x = 0
         self.tile_center_y = 0
@@ -278,27 +281,28 @@ class Healer:
         self.state_machine.draw()
 
     def update(self):
-        self.state_machine.update()
+        # Healer는 Idle/Heal 상태 로직은 state_machine 내부에 있으므로, 여기서는 스킬 상태/게이지만 관리
         try:
             dt = game_framework.frame_time
         except Exception:
             dt = 0.0
 
-        # Hptank-Healer 링크 상태 자동 갱신
+        # 링크 상태 자동 갱신
         try:
             update_link_states_for_hptank_healer()
         except Exception:
             pass
 
-        if self.skill_state is True:
-            self._skill_timer += dt
-            while self._skill_timer >= 1.0 and self.skill > 0:
-                self.skill = max(0, self.skill - 1)
-                self._skill_timer -= 1.0
-                if self.skill == 0:
-                    self.skill_state = False
-
+        # 1) 스킬 발동 중이면 지속시간만 관리 (힐 2배 효과는 Heal.do 에서 skill_state로 판단)
+        if self.skill_state:
+            self.skill_state_time += dt
+            if self.skill_state_time >= self.skill_state_duration:
+                # 10초 유지 후 스킬 종료 및 게이지 0으로 초기화
+                self.skill_state = False
+                self.skill_state_time = 0.0
+                self.skill = 0
         else:
+            # 2) 스킬이 꺼져 있는 동안만 쿨다운 게이지 채우기
             self._skill_timer += dt
             while self._skill_timer >= 1.0 and self.skill < 10:
                 self.skill = min(10, self.skill + 1)

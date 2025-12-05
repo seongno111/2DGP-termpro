@@ -271,9 +271,12 @@ class Dptank:
         self.Def = 50
         self.Atk = 10
         self.number = 4
+        # 스킬 게이지/상태: 게이지 0~10, 상태 및 지속시간 별도 관리
         self.skill = 0
         self._skill_timer = 0.0
         self.skill_state = False
+        self.skill_state_time = 0.0
+        self.skill_state_duration = 10.0
         self.linked = False
         self.tile_w = 100
         self.tile_h = 100
@@ -372,46 +375,18 @@ class Dptank:
         except Exception:
             pass
 
-        if self.skill_state is True:
+        # 스킬 발동 중일 때는 방어력 증가 및 (link 상태면) 스킬 사용 시 코스트 회복 로직은 기존 Attack/do 쪽에서 유지
+        if self.skill_state:
             self._skill_timer += dt
-            self.Def = 100
-            while self._skill_timer >= 1.0 and self.skill > 0:
-                self.skill = max(0, self.skill - 1)
-                self._skill_timer -= 1.0
-                # linked 상태일 때 스킬을 1 소모할 때마다 cost 10 회복
-                if getattr(self, 'linked', False):
-                    try:
-                        import sys
-                        char = None
-                        for mod_name in ('stage03', 'stage02', 'stage01'):
-                            mod = sys.modules.get(mod_name)
-                            if mod:
-                                c = getattr(mod, 'character', None)
-                                if c is not None:
-                                    char = c
-                                    break
-                        if char is None:
-                            import game_world as _gw
-                            for layer in getattr(_gw, 'world', []):
-                                for obj in list(layer):
-                                    if getattr(obj, '__class__', None) and obj.__class__.__name__ == 'Character':
-                                        char = obj
-                                        break
-                                if char:
-                                    break
-                        if char is not None:
-                            try:
-                                char.cost += 1
-                            except Exception:
-                                pass
-                    except Exception:
-                        pass
-                if self.skill == 0:
-                    self.skill_state = False
-
+            self.skill_state_time += dt
+            if self.skill_state_time >= self.skill_state_duration:
+                # 10초 유지 후 스킬 종료 및 게이지 0으로 초기화
+                self.skill_state = False
+                self.skill_state_time = 0.0
+                self.skill = 0
         else:
+            # 스킬이 꺼져 있는 동안만 쿨다운 게이지 채우기 (10초 동안 0→10)
             self._skill_timer += dt
-            self.Def = 30
             while self._skill_timer >= 1.0 and self.skill < 10:
                 self.skill = min(10, self.skill + 1)
                 self._skill_timer -= 1.0
